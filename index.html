@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PonteFit</title>
+<style>
+/* ===== Tokens de diseño (claro / oscuro) ===== */
+:root{
+  --bg:#f7f3f4; --surface:#fff; --surface-2:#f0e7e9; --fg:#1d1214; --muted:#6e5a5f; --line:#e6d9dc;
+  --accent:#e90137; --accent-fg:#fff; --ok:#1f8a5b; --warn:#a86a10; --bad:#a3122b;
+  --ok-bg:#e3f4ec; --warn-bg:#fbf0dc; --bad-bg:#fbe5e5;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --display:"Arial Narrow","Roboto Condensed","Segoe UI",system-ui,sans-serif;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141012; --surface:#1e171a; --surface-2:#2b2125; --fg:#f3ebed; --muted:#b39fa4; --line:#3b2e33;
+  --ok:#4cc38a; --warn:#e0a93e; --bad:#ff7a8f; --ok-bg:#16302a; --warn-bg:#352a14; --bad-bg:#3a1c1c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141012; --surface:#1e171a; --surface-2:#2b2125; --fg:#f3ebed; --muted:#b39fa4; --line:#3b2e33;
+  --ok:#4cc38a; --warn:#e0a93e; --bad:#ff7a8f; --ok-bg:#16302a; --warn-bg:#352a14; --bad-bg:#3a1c1c; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--font);min-height:100vh}
+.contenedor{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+
+/* Cabecera y navegación */
+.cabecera{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.cabecera > .contenedor{display:flex;align-items:center;gap:12px;padding-block:10px;flex-wrap:wrap}
+.marca{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.marca-logo{width:40px;height:40px;border-radius:9px;background:#e90137;flex:none;overflow:hidden;display:block}
+.marca-logo img{width:100%;height:100%;display:block}
+.acceso{background:linear-gradient(180deg,var(--accent) 0 38%,var(--bg) 38%)}
+.acceso .logo-grande{width:84px;height:84px;border-radius:18px;overflow:hidden;margin:-58px auto 0;box-shadow:0 6px 18px rgba(0,0,0,.18);border:3px solid var(--surface)}
+.acceso .logo-grande img{width:100%;height:100%;display:block}
+.acceso .bienvenida{text-align:center}
+.acceso .bienvenida h1{font:700 1.9rem var(--display);text-transform:uppercase;letter-spacing:.03em;margin:4px 0 0}
+.marca h1{font:700 1.3rem var(--display);text-transform:uppercase;letter-spacing:.02em;margin:0;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.marca small{display:block;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
+.sesion{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.menu{border-top:1px solid var(--line)}
+.menu .contenedor{display:flex;gap:4px;overflow-x:auto;padding-block:6px;scrollbar-width:thin}
+.pestana{border:0;background:transparent;color:var(--muted);font:600 .92rem var(--font);padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.pestana[aria-current="true"]{background:var(--surface-2);color:var(--fg)}
+.pestana:hover{color:var(--fg)}
+main{padding-block:20px 56px;display:flex;flex-direction:column;gap:20px}
+
+/* Tipografía */
+h2{font:700 1.8rem var(--display);text-transform:uppercase;letter-spacing:.02em;margin:0;line-height:1.1}
+h3{font:700 1.2rem var(--display);text-transform:uppercase;letter-spacing:.03em;margin:0}
+.etiqueta{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.tenue{color:var(--muted)}
+
+/* Estructuras */
+.fila{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.extremos{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.rejilla{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
+.indicadores{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr))}
+.tarjeta{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.tarjeta.pila{display:flex;flex-direction:column;gap:12px}
+.indicador{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.indicador b{display:block;font:700 clamp(1.2rem,4.6vw,1.8rem) var(--display);overflow-wrap:anywhere;line-height:1.1;font-variant-numeric:tabular-nums}
+.aviso{border-left:3px solid var(--accent);background:var(--surface);padding:10px 14px;border-radius:0 8px 8px 0}
+.vacio{text-align:center;padding:32px 16px;color:var(--muted)}
+
+/* Botones y chips */
+.boton{border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 .9rem var(--font);padding:8px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.boton:hover{border-color:var(--muted)}
+.boton.principal{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.boton.peligro{color:var(--bad);border-color:var(--bad)}
+.boton.chico{padding:5px 10px;font-size:.82rem}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);white-space:nowrap}
+.chip.n1,.chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.n2,.chip.warn{background:var(--warn-bg);color:var(--warn)} .chip.n3,.chip.bad{background:var(--bad-bg);color:var(--bad)}
+
+/* Formularios */
+.formulario{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr))}
+.campo{display:flex;flex-direction:column;gap:4px;min-width:0}
+.campo.ancho{grid-column:1/-1}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+textarea{min-height:70px;resize:vertical}
+.opciones{display:flex;gap:8px;flex-wrap:wrap}
+.opciones label{display:inline-flex;gap:6px;align-items:center;background:var(--surface-2);padding:6px 10px;border-radius:8px;cursor:pointer}
+.opciones input{width:auto}
+.error{color:var(--bad);font-weight:600;min-height:1.2em}
+
+/* Tablas */
+.tabla-contenedor{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.9rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+th button{all:unset;cursor:pointer}
+tr.clic{cursor:pointer} tr.clic:hover td{background:var(--surface-2)}
+.mejora{color:var(--ok);font-weight:600} .retroceso{color:var(--warn);font-weight:600}
+
+/* Plan */
+.semanas{display:flex;gap:6px;flex-wrap:wrap}
+.semana{border:1px solid var(--line);background:var(--surface);color:var(--fg);font:700 1rem var(--display);width:40px;height:40px;border-radius:8px;cursor:pointer}
+.semana[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.semana.actual{box-shadow:inset 0 -3px 0 var(--accent)}
+.semana[aria-pressed="true"].actual{box-shadow:inset 0 -3px 0 var(--accent-fg)}
+.fase{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.fase b{font:700 1.35rem var(--display);text-transform:uppercase}
+.bloque{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.ejercicio{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.ejercicio .dosis{color:var(--muted);font-size:.88rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ejercicio select{padding:4px 6px;font-size:.88rem;background:var(--surface)}
+
+/* Gráficos */
+.grafico svg{width:100%;height:auto;display:block}
+.grafico .eje{stroke:var(--line)} .grafico .linea{stroke:var(--accent);fill:none;stroke-width:2.5}
+.grafico .area{fill:var(--accent);opacity:.12} .grafico .punto{fill:var(--accent)} .grafico text{fill:var(--muted);font:12px var(--font)}
+.grafico .barra{fill:var(--accent)} .grafico .barra0{fill:var(--surface-2)}
+
+/* Acceso */
+.acceso{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+.acceso .tarjeta{width:min(100%,400px);display:flex;flex-direction:column;gap:14px}
+.puntaje{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.puntaje div{background:var(--surface-2);border-radius:8px;padding:8px 10px;font-size:.82rem}
+.puntaje b{font:700 1.2rem var(--display);display:block}
+.aviso-flotante{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+[hidden]{display:none!important}
+@media (max-width:600px){h2{font-size:1.5rem}.sesion .nombre-usuario{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="raiz"></div>
+<div class="aviso-flotante" id="avisoFlotante" role="status" hidden></div>
+
+<script>
+/* =========================================================
+   1. CATÁLOGOS Y LÓGICA DE ENTRENAMIENTO (funciones puras)
+   ========================================================= */
+const NIVEL={1:"Principiante",2:"Intermedio",3:"Avanzado"};
+const OBJETIVO={grasa:"Pérdida de grasa",fuerza:"Fuerza",acond:"Acondicionamiento cardio",recomp:"Tonificación / recomposición"};
+const LIMITACION={rodilla:"Rodilla",hombro:"Hombro",lumbar:"Zona lumbar",muneca:"Muñeca"};
+const PATRON={sq:"Sentadilla",hg:"Bisagra de cadera",uni:"Pierna unilateral",ph:"Empuje horizontal",pv:"Empuje vertical",th:"Tracción horizontal",tv:"Tracción vertical",core:"Core",cardio:"Cardio",pot:"Potencia"};
+// [id, nombre, patrón, nivel mínimo, zonas que carga]
+const EJERCICIOS=[
+ ["sq1","Sentadilla al cajón con peso corporal","sq",1,""],["sq7","Sentadilla al cajón alto (rango controlado)","sq",1,""],["sq8","Puente de glúteo con peso","sq",1,""],
+ ["sq2","Sentadilla goblet con kettlebell","sq",1,"rodilla"],["sq3","Sentadilla goblet con pausa de 2 s","sq",2,"rodilla"],["sq4","Sentadilla frontal con kettlebells dobles","sq",2,"rodilla"],
+ ["sq5","Sentadilla frontal con barra","sq",3,"rodilla,muneca"],["sq6","Sentadilla trasera con barra","sq",3,"rodilla,lumbar,hombro"],
+ ["hg1","Peso muerto rumano con mancuernas","hg",1,"lumbar"],["hg2","Hip thrust en banco con peso corporal","hg",1,""],["hg3","Peso muerto con kettlebell","hg",1,"lumbar"],
+ ["hg8","Curl femoral con fitball","hg",1,""],["hg4","Peso muerto con barra hexagonal","hg",2,"lumbar"],["hg5","Hip thrust con barra","hg",2,""],
+ ["hg7","Peso muerto rumano a una pierna","hg",2,""],["hg6","Peso muerto convencional con barra","hg",3,"lumbar"],
+ ["un2","Step-up al cajón bajo","uni",1,""],["un6","Puente de glúteo a una pierna","uni",1,""],["un1","Zancada estática con apoyo","uni",1,"rodilla"],
+ ["un3","Zancada inversa con mancuernas","uni",2,"rodilla"],["un5","Step-up con mancuernas al cajón alto","uni",2,"rodilla"],["un4","Sentadilla búlgara","uni",3,"rodilla"],
+ ["ph7","Press de pecho con banda elástica","ph",1,""],["ph2","Press de pecho con mancuernas en el suelo","ph",1,""],["ph1","Flexiones inclinadas en banco","ph",1,"muneca"],
+ ["ph3","Flexiones de pecho","ph",2,"muneca"],["ph4","Press de banca con mancuernas","ph",2,""],["ph5","Press de banca con barra","ph",3,"hombro"],["ph6","Flexiones con pies elevados","ph",3,"muneca,hombro"],
+ ["pv6","Press landmine de rodillas","pv",1,""],["pv1","Press de hombros sentado con mancuernas","pv",1,"hombro"],["pv2","Press landmine a una mano","pv",2,""],
+ ["pv3","Press militar con kettlebell","pv",2,"hombro"],["pv4","Push press con barra","pv",3,"hombro,lumbar"],
+ ["th1","Remo con banda elástica","th",1,""],["th2","Remo con mancuerna a una mano","th",1,""],["th3","Remo invertido en TRX","th",2,""],
+ ["th5","Remo con pecho apoyado en banco inclinado","th",2,""],["th4","Remo con barra inclinado","th",3,"lumbar"],
+ ["tv4","Jalón al pecho en polea","tv",1,""],["tv1","Jalón con banda elástica","tv",1,""],["tv2","Dominadas asistidas con banda","tv",2,"hombro"],
+ ["tv5","Pullover con mancuerna","tv",2,"hombro"],["tv3","Dominadas","tv",3,"hombro"],
+ ["co1","Plancha frontal sobre antebrazos","core",1,""],["co2","Dead bug","core",1,""],["co3","Pallof press con banda","core",1,""],["co5","Bird dog","core",1,""],
+ ["co6","Caminata de granjero","core",1,""],["co4","Plancha lateral","core",1,"hombro"],["co8","Hollow hold","core",2,"lumbar"],["co9","Leñador con banda","core",2,""],
+ ["co10","Plancha con toque de hombros","core",2,"muneca,hombro"],["co7","Rueda abdominal","core",3,"lumbar,hombro"],
+ ["ca1","Bicicleta de aire","cardio",1,""],["ca11","Shadow boxing","cardio",1,""],["ca13","Step-ups rápidos al cajón bajo","cardio",1,""],["ca2","Remo ergómetro","cardio",1,"lumbar"],
+ ["ca7","Jumping jacks","cardio",1,"rodilla"],["ca8","Skipping en el sitio","cardio",1,"rodilla"],["ca9","Battle ropes","cardio",1,"hombro"],["ca10","Empuje de trineo","cardio",2,""],
+ ["ca3","Salto de soga","cardio",2,"rodilla"],["ca5","Mountain climbers","cardio",2,"muneca"],["ca6","Kettlebell swing","cardio",2,"lumbar"],
+ ["ca12","Slam ball","cardio",2,"lumbar,hombro"],["ca4","Burpees","cardio",2,"rodilla,muneca,hombro"],["ca14","Saltos al cajón","cardio",3,"rodilla"],
+ ["po6","Lanzamiento rotacional de balón medicinal a la pared","pot",1,""],["po1","Lanzamiento de balón medicinal al pecho","pot",1,""],
+ ["po3","Kettlebell swing explosivo","pot",2,"lumbar"],["po4","Slam ball explosivo","pot",2,"lumbar,hombro"],["po2","Salto al cajón","pot",2,"rodilla"],["po5","Salto vertical con contramovimiento","pot",3,"rodilla"]
+].map(([id,nombre,patron,nivel,evita])=>({id,nombre,patron,nivel,evita:evita?evita.split(","):[]}));
+const EJERCICIO_POR_ID=Object.fromEntries(EJERCICIOS.map(e=>[e.id,e]));
+
+// Pruebas de la evaluación física y sus cortes de nivel (referenciales para adultos)
+const PRUEBAS=[
+  {clave:"sentadillas",nombre:"Sentadillas en 60 s",unidad:"reps",cortes:[25,40]},
+  {clave:"flexiones",nombre:"Flexiones máximas",unidad:"reps",cortes:[10,25]},
+  {clave:"plancha",nombre:"Plancha frontal",unidad:"s",cortes:[45,90]},
+  {clave:"burpees",nombre:"Burpees en 60 s",unidad:"reps",cortes:[12,20]}
+];
+function puntajePrueba(p,v){if(v==null||v===""||isNaN(v))return null;v=+v;return v>=p.cortes[1]?3:v>=p.cortes[0]?2:1;}
+function nivelDeEvaluacion(ev){
+  if(!ev)return null;
+  const ps=PRUEBAS.map(p=>puntajePrueba(p,ev[p.clave])).filter(x=>x!=null);
+  if(!ps.length)return null;
+  const m=ps.reduce((a,b)=>a+b,0)/ps.length;
+  return {promedio:Math.round(m*100)/100,nivel:m<1.75?1:m<2.5?2:3};
+}
+function calcularImc(peso,talla){if(!peso||!talla)return null;const m=talla>3?talla/100:talla;return Math.round(peso/(m*m)*10)/10;}
+
+// Periodización de 8 semanas
+const FASES=[
+  {nombre:"Adaptación",semanas:[1,2],rpe:"RPE 6 · deja 4 repeticiones en reserva",i:0},
+  {nombre:"Desarrollo",semanas:[3,4,5],rpe:"RPE 7 · deja 3 repeticiones en reserva",i:1},
+  {nombre:"Intensificación",semanas:[6,7],rpe:"RPE 8 · deja 2 repeticiones en reserva",i:2},
+  {nombre:"Descarga y reevaluación",semanas:[8],rpe:"RPE 5–6 · técnica y recuperación",i:3}
+];
+const DOSIS_BASE={
+  fuerza:{series:[3,4,5,2],reps:["8","6","4","5"],descanso:[90,120,150,90]},
+  grasa:{series:[3,3,4,2],reps:["12","15","12","12"],descanso:[45,45,40,60]},
+  acond:{series:[3,4,4,2],reps:["10","10","8","10"],descanso:[60,60,45,60]},
+  recomp:{series:[3,4,4,2],reps:["12","10","8","10"],descanso:[75,75,90,75]}
+};
+const faseDeSemana=s=>FASES.find(f=>f.semanas.includes(s))||FASES[0];
+function calcularDosis(objetivo,nivel,semana){
+  const f=faseDeSemana(semana),t=DOSIS_BASE[objetivo]||DOSIS_BASE.recomp,i=f.i;
+  let series=t.series[i];
+  if(i<3){if(nivel===1)series=Math.max(2,series-1);if(nivel===3&&i>0)series=Math.min(5,series+1);}
+  const rondas=Math.max(2,[3,4,5,2][i]+(nivel===1?-1:nivel===3?1:0));
+  const minutos=[8,10,12,6][i]+(nivel===1?-2:nivel===3?3:0);
+  return {fase:f,series,reps:t.reps[i],descanso:t.descanso[i],rondas,minutos,
+    core:["2 × 30 s / 10 reps","3 × 40 s / 12 reps","3 × 45 s / 12 reps","2 × 30 s / 10 reps"][i],
+    potencia:["3 × 5 explosivas","3 × 5 explosivas","4 × 4 explosivas","2 × 4 suaves"][i]};
+}
+function textoMetabolico(obj,d){
+  if(obj==="grasa")return `Intervalos · ${d.rondas} rondas de 40 s trabajo / 20 s pausa por ejercicio`;
+  if(obj==="fuerza")return `Finisher EMOM · ${Math.max(6,d.minutos-2)} min alternando ejercicios`;
+  if(obj==="acond")return `AMRAP · ${d.minutos} min, 10–12 reps o 30 s por estación`;
+  return `Circuito · ${d.rondas} rondas de 45 s trabajo / 15 s pausa`;
+}
+const PLANTILLAS={
+  A:{nombre:"Cuerpo completo A",foco:"Sentadilla y empujes",fuerza:["sq","ph","th","hg"]},
+  B:{nombre:"Cuerpo completo B",foco:"Bisagra y tracción vertical",fuerza:["hg","pv","tv","uni"]},
+  C:{nombre:"Cuerpo completo C",foco:"Unilateral y potencia",fuerza:["pot","uni","ph","th"]},
+  I1:{nombre:"Tren inferior 1",foco:"Dominante de rodilla",fuerza:["pot","sq","uni","hg"]},
+  S1:{nombre:"Tren superior 1",foco:"Empujes",fuerza:["ph","th","pv","tv"]},
+  I2:{nombre:"Tren inferior 2",foco:"Dominante de cadera",fuerza:["hg","uni","sq","hg"]},
+  S2:{nombre:"Tren superior 2",foco:"Tracciones",fuerza:["tv","ph","th","pv"]},
+  E:{nombre:"Acondicionamiento",foco:"Cardio y movilidad",fuerza:[],cardioLargo:true}
+};
+const SESIONES_POR_DIAS={2:["A","B"],3:["A","B","C"],4:["I1","S1","I2","S2"],5:["I1","S1","E","I2","S2"]};
+function generadorAleatorio(semilla){let h=2166136261;for(const c of String(semilla)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return()=>{h^=h<<13;h^=h>>>17;h^=h<<5;return((h>>>0)%10000)/10000;};}
+function ejerciciosPermitidos(patron,nivel,lims){
+  const seguros=EJERCICIOS.filter(e=>e.patron===patron&&!e.evita.some(z=>lims.includes(z)));
+  const alNivel=seguros.filter(e=>e.nivel<=nivel);
+  return alNivel.length?alNivel:seguros;
+}
+function elegirEjercicio(patron,nivel,lims,usados,azar){
+  let c=ejerciciosPermitidos(patron,nivel,lims).filter(e=>!usados.has(e.id));
+  if(!c.length)c=ejerciciosPermitidos(patron,nivel,lims);
+  if(!c.length)return null;
+  const tope=Math.max(...c.map(e=>e.nivel)),pref=c.filter(e=>e.nivel===tope),pool=pref.length>=2?pref:c;
+  const e=pool[Math.floor(azar()*pool.length)];usados.add(e.id);return e.id;
+}
+function generarPlan({objetivo,nivel,dias,limitaciones,inicio,semilla}){
+  const lims=limitaciones||[],azar=generadorAleatorio(semilla||"x"),usados=new Set();
+  const nCardio=objetivo==="fuerza"?2:objetivo==="recomp"?3:4;
+  const sesiones=(SESIONES_POR_DIAS[dias]||SESIONES_POR_DIAS[3]).map(clave=>{
+    const t=PLANTILLAS[clave];
+    const fuerza=t.fuerza.map(p=>{if(p==="pot"&&nivel===1)p="uni";return{patron:p,ej:elegirEjercicio(p,nivel,lims,usados,azar)};}).filter(x=>x.ej);
+    const cardio=[],core=[];
+    for(let i=0;i<(t.cardioLargo?3:nCardio);i++){const id=elegirEjercicio("cardio",nivel,lims,usados,azar);if(id)cardio.push(id);}
+    for(let i=0;i<(t.cardioLargo?3:2);i++){const id=elegirEjercicio("core",nivel,lims,usados,azar);if(id)core.push(id);}
+    return{clave,nombre:t.nombre,foco:t.foco,cardioLargo:!!t.cardioLargo,fuerza,cardio,core};
+  });
+  return{inicio,objetivo,nivel,dias,limitaciones:lims,sesiones,nota:""};
+}
+function semanaDelPlan(plan,fecha){
+  if(!plan||!plan.inicio)return 1;
+  const d=Math.floor((new Date(fecha+"T12:00:00")-new Date(plan.inicio+"T12:00:00"))/864e5);
+  return Math.min(8,Math.max(1,Math.floor(d/7)+1));
+}
+
+/* =========================================================
+   2. UTILIDADES
+   ========================================================= */
+const $=s=>document.querySelector(s);
+const escapar=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const hoy=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
+const fechaCorta=f=>{if(!f)return"—";const[y,m,d]=f.split("-");return`${d}/${m}/${y}`;};
+const numero=v=>v===""||v==null||isNaN(+v)?null:+v;
+const nuevoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const sumarDias=(f,n)=>{const d=new Date(f+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+const diasEntre=(a,b)=>Math.round((new Date(b+"T12:00:00")-new Date(a+"T12:00:00"))/864e5);
+const dinero=n=>"S/ "+(+n||0).toLocaleString("es-PE",{minimumFractionDigits:2,maximumFractionDigits:2});
+function avisar(texto){const el=$("#avisoFlotante");el.textContent=texto;el.hidden=false;clearTimeout(avisar.t);avisar.t=setTimeout(()=>el.hidden=true,2800);}
+
+// Hash de contraseña con sal (SHA-256 cuando el navegador lo permite)
+async function hashClave(clave,sal){
+  const texto=sal+"|"+clave;
+  if(window.crypto&&crypto.subtle){
+    const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(texto));
+    return[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  }
+  let h=2166136261;for(const c of texto){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return"f"+(h>>>0).toString(16);
+}
+
+/* =========================================================
+   3. DATOS (localStorage)
+   ========================================================= */
+const CLAVE_DATOS="gimnasioFuncional.datos.v1";
+const CLAVE_SESION="gimnasioFuncional.sesion";
+const LOGO="data:image/jpeg;base64,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91e2TzXRVqqmtdz834W4PxnEFb92uWkvim9vRd35fed18bv2l73xO1z4W8AXE1lopzHcakuUmvB0ITvHGfX7zew4Pzh0GB0oorz5zc3dn9NZHkODyXDrDYONl1fVvu3/AEl0CiiioPZCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigArr/AIefEnxR8NPE66v4dvMIxAubKXJhulH8Lr6+jDkfmDyFFNNp3RzYzB0MZRlQxEFKEt0z9JPhf8XPC/xU0A3WkTG31CFQbvTJmHmwH1/2kz0cceuDxXxX+0RpQ0j9pTxPEoAS4ljvFx/00iVj/wCPbq4DQte1jwz4gttc0DUJ7DULZt0U8LYI9QexB6EHg966D4k+P7n4k+KrXxJqFhFaagLGK1u/JP7uWRC37xR1UEEfLzjHWt6lb2kLPc/PeH+CqnD+dyxGFfNh5xa13i7ppPutNH9/d9R+zVpS6r+0poBddyWYmvGH+5EwB/76Za+xvir8YfDHwq0ETalKLvVZkJtNLhYeZL/tN/cTPVj+AJ4r4U+GnxDu/hn4g1HX9LsYrnU5rB7O1ebmOBndCZGX+LAXgccnniuZ1nWtW8Q65c6zrmoT39/ctvluJ23Mx/oB0AHAHSiFbkhZbiz3gmef539Zxbth4RiklvJ6tryWur37dzc8ffEPxP8AEjxQ+teJL0yEZW3tY8rDaof4Y17e5PJ7muVoorBtt3Z+iYTCUcJSjQw8VGEdElsFFFFI6AooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//2Q==";
+const CONFIG_INICIAL={nombre:"PonteFit",lema:"Entrenamiento funcional · cardio y fuerza",entrenador:"",color:"#e90137",
+  grupos:{1:"Grupo Base",2:"Grupo Intermedio",3:"Grupo Avanzado"},
+  planes:[{id:"mensual",nombre:"Mensual",dias:30,precio:150},{id:"trimestral",nombre:"Trimestral",dias:90,precio:400},{id:"clases12",nombre:"Paquete 12 clases",dias:45,precio:180}]};
+let datos=cargarDatos();
+function cargarDatos(){
+  try{const d=JSON.parse(localStorage.getItem(CLAVE_DATOS));if(d&&d.usuarios){d.config=d.config||{};if(!d.config.nombre||d.config.nombre==="Mi Gimnasio Funcional")d.config.nombre="PonteFit";if(!d.config.color||d.config.color==="#e4572e")d.config.color="#e90137";return d;}}catch(_){}
+  return{config:structuredClone(CONFIG_INICIAL),usuarios:[],alumnos:{}};
+}
+function guardarDatos(){
+  try{localStorage.setItem(CLAVE_DATOS,JSON.stringify(datos));}
+  catch(_){avisar("No se pudo guardar: el almacenamiento del navegador está lleno o bloqueado.");}
+}
+const config=()=>Object.assign({},CONFIG_INICIAL,datos.config,{grupos:Object.assign({},CONFIG_INICIAL.grupos,datos.config?.grupos)});
+
+// Consultas sobre alumnos
+const listaAlumnos=()=>Object.values(datos.alumnos).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+const ordenarFecha=arr=>(arr||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:1);
+const ultimaEvaluacion=a=>{const e=ordenarFecha(a.evaluaciones);return e[e.length-1]||null;};
+function nivelAlumno(a){if(a.nivelManual)return+a.nivelManual;const n=nivelDeEvaluacion(ultimaEvaluacion(a));return n?n.nivel:1;}
+function estadoMembresia(a){
+  const m=a.membresia;if(!m||!m.vence)return{clase:"bad",texto:"Sin membresía",dias:null};
+  const d=diasEntre(hoy(),m.vence);
+  if(d<0)return{clase:"bad",texto:`Vencida hace ${-d} d`,dias:d};
+  if(d<=7)return{clase:"warn",texto:`Vence en ${d} d`,dias:d};
+  return{clase:"ok",texto:`Activa hasta ${fechaCorta(m.vence)}`,dias:d};
+}
+const evaluacionPendiente=a=>{const u=ultimaEvaluacion(a);return!u||sumarDias(u.fecha,28)<=hoy();};
+const asistenciasDesde=(a,desde)=>(a.asistencias||[]).filter(x=>x.fecha>=desde).length;
+function resumenAvance(a){
+  const ev=ordenarFecha(a.evaluaciones),pr=ordenarFecha(a.progreso);
+  const serie=k=>[...ev,...pr].filter(x=>x[k]!=null).sort((x,y)=>x.fecha<y.fecha?-1:1);
+  const delta=k=>{const s=serie(k);return s.length>=2?Math.round((s[s.length-1][k]-s[0][k])*10)/10:null;};
+  const puntaje=e=>{const n=nivelDeEvaluacion(e);return n?n.promedio:null;};
+  const dPuntaje=ev.length>=2&&puntaje(ev[0])!=null&&puntaje(ev[ev.length-1])!=null?Math.round((puntaje(ev[ev.length-1])-puntaje(ev[0]))*100)/100:null;
+  const actividad=[...(a.asistencias||[]),...pr,...ev].map(x=>x.fecha).sort().pop()||null;
+  return{peso:delta("peso"),cintura:delta("cintura"),puntaje:dPuntaje,asist4:asistenciasDesde(a,sumarDias(hoy(),-28)),actividad};
+}
+
+/* =========================================================
+   4. ESTADO DE LA INTERFAZ Y SESIÓN
+   ========================================================= */
+const ui={vista:"panel",alumnoId:null,pestana:"perfil",semana:null,buscar:"",confirmar:null,orden:{campo:"nombre",dir:1},vistaPrevia:false};
+let usuarioActual=null;
+function iniciarSesionGuardada(){
+  let id=null;try{id=sessionStorage.getItem(CLAVE_SESION);}catch(_){}
+  usuarioActual=datos.usuarios.find(u=>u.id===id)||null;
+}
+function cerrarSesion(){ui.credenciales=null;$("#avisoFlotante").hidden=true;try{sessionStorage.removeItem(CLAVE_SESION);}catch(_){}usuarioActual=null;Object.assign(ui,{vista:"panel",alumnoId:null});pintar();}
+const esAdmin=()=>usuarioActual&&usuarioActual.rol==="admin";
+const alumnoDelUsuario=()=>usuarioActual&&datos.alumnos[usuarioActual.alumnoId];
+
+function aplicarMarca(){
+  const c=config();document.title=c.nombre;
+  let ico=document.querySelector("link[rel=icon]");if(!ico){ico=document.createElement("link");ico.rel="icon";document.head.appendChild(ico);}ico.href=LOGO;
+  const col=/^#[0-9a-f]{6}$/i.test(c.color)?c.color:CONFIG_INICIAL.color;
+  const r=parseInt(col.slice(1,3),16),g=parseInt(col.slice(3,5),16),b=parseInt(col.slice(5,7),16);
+  document.documentElement.style.setProperty("--accent",col);
+  document.documentElement.style.setProperty("--accent-fg",(0.2126*r+0.7152*g+0.0722*b)/255>0.6?"#141a21":"#ffffff");
+}
+
+/* =========================================================
+   5. COMPONENTES REUTILIZABLES
+   ========================================================= */
+const chipNivel=n=>`<span class="chip n${n}">${NIVEL[n]}</span>`;
+function graficoLinea(puntos,unidad){
+  puntos=puntos.filter(p=>p.y!=null).sort((a,b)=>a.x<b.x?-1:1);
+  if(puntos.length<2)return`<p class="tenue">Se necesitan al menos 2 registros para ver la curva.</p>`;
+  const W=600,H=190,L=44,R=16,T=14,B=30,ys=puntos.map(p=>p.y);
+  let mn=Math.min(...ys),mx=Math.max(...ys);if(mn===mx){mn-=1;mx+=1;}const m=(mx-mn)*.15;mn-=m;mx+=m;
+  const t0=new Date(puntos[0].x).getTime(),t1=new Date(puntos[puntos.length-1].x).getTime();
+  const X=x=>L+(W-L-R)*((new Date(x).getTime()-t0)/((t1-t0)||1)),Y=y=>T+(H-T-B)*(1-(y-mn)/(mx-mn));
+  let g="";for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3,y=Y(v);g+=`<line class="eje" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+4}" text-anchor="end">${Math.round(v*10)/10}</text>`;}
+  const d=puntos.map((p,i)=>(i?"L":"M")+X(p.x).toFixed(1)+" "+Y(p.y).toFixed(1)).join(" ");
+  const u=puntos[puntos.length-1];
+  return`<div class="grafico"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución en ${escapar(unidad)}">${g}<path class="area" d="${d} L${X(u.x)} ${H-B} L${X(puntos[0].x)} ${H-B} Z"/><path class="linea" d="${d}"/>${puntos.map(p=>`<circle class="punto" cx="${X(p.x)}" cy="${Y(p.y)}" r="3"/>`).join("")}<circle class="punto" cx="${X(u.x)}" cy="${Y(u.y)}" r="5.5"/><text x="${L}" y="${H-8}">${fechaCorta(puntos[0].x)}</text><text x="${W-R}" y="${H-8}" text-anchor="end">${fechaCorta(u.x)} · ${u.y} ${escapar(unidad)}</text></svg></div>`;
+}
+function graficoAsistencia(asist){
+  const W=600,H=170,L=30,R=10,T=14,B=30,n=8;
+  const lunes=f=>{const x=new Date(f+"T12:00:00");x.setDate(x.getDate()-((x.getDay()+6)%7));return x.toISOString().slice(0,10);};
+  const base=lunes(hoy()),sem=[];for(let i=n-1;i>=0;i--)sem.push(sumarDias(base,-7*i));
+  const cnt=sem.map(s=>(asist||[]).filter(a=>lunes(a.fecha)===s).length),mx=Math.max(3,...cnt),paso=(W-L-R)/n,ancho=paso*.62;
+  let g="";for(let i=0;i<=mx;i+=Math.ceil(mx/3)){const y=T+(H-T-B)*(1-i/mx);g+=`<line class="eje" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+4}" text-anchor="end">${i}</text>`;}
+  sem.forEach((s,i)=>{const h=Math.max(2,(H-T-B)*cnt[i]/mx),x=L+paso*i+(paso-ancho)/2;g+=`<rect class="${cnt[i]?"barra":"barra0"}" x="${x}" y="${H-B-h}" width="${ancho}" height="${h}" rx="3"/><text x="${x+ancho/2}" y="${H-10}" text-anchor="middle">${s.slice(8)}/${s.slice(5,7)}</text>`;});
+  return`<div class="grafico"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sesiones por semana en las últimas 8 semanas">${g}</svg></div>`;
+}
+function selectorSemanas(sel,actual){return`<div class="semanas" role="group" aria-label="Semana del plan">${[1,2,3,4,5,6,7,8].map(w=>`<button class="semana ${w===actual?"actual":""}" aria-pressed="${w===sel}" data-semana="${w}" ${w===actual?'title="Semana actual"':""}>${w}</button>`).join("")}</div>`;}
+function vistaSesiones(plan,semana,{editable=false,registrar=false,asistencias=[]}={}){
+  const d=calcularDosis(plan.objetivo,plan.nivel,semana),lim=(plan.limitaciones||[]).map(l=>LIMITACION[l]).join(", ");
+  const linea=(id,dosis,ref)=>{const e=EJERCICIO_POR_ID[id];if(!e)return"";
+    if(ref){const alt=ejerciciosPermitidos(e.patron,plan.nivel,plan.limitaciones||[]);
+      return`<div class="ejercicio"><select aria-label="Cambiar ejercicio de ${escapar(PATRON[e.patron])}" data-cambiar="${ref}">${alt.map(x=>`<option value="${x.id}" ${x.id===id?"selected":""}>${escapar(x.nombre)}</option>`).join("")}</select><span class="dosis">${dosis}</span></div>`;}
+    return`<div class="ejercicio"><span>${escapar(e.nombre)}</span><span class="dosis">${dosis}</span></div>`;};
+  return`<div class="fase"><span class="etiqueta">Semana ${semana} de 8</span><b>${d.fase.nombre}</b><span class="tenue">${d.fase.rpe}</span></div>
+  <div class="rejilla">${plan.sesiones.map((s,si)=>{
+    const ult=asistencias.filter(a=>a.sesion===s.clave).sort((a,b)=>a.fecha<b.fecha?1:-1)[0],hechaHoy=ult&&ult.fecha===hoy();
+    return`<article class="tarjeta pila"><div class="extremos"><div><div class="etiqueta">Sesión ${si+1}</div><h3>${escapar(s.nombre)}</h3><div class="tenue">${escapar(s.foco)}</div></div>${ult?`<span class="chip ok">Última: ${fechaCorta(ult.fecha)}</span>`:""}</div>
+    <div class="bloque"><div class="etiqueta">Calentamiento · 8–10 min</div><div class="tenue">Movilidad de cadera, tobillo y hombros; activación de glúteo y escápulas; 2 series ligeras del primer ejercicio.${lim?` Cuida: ${escapar(lim)}.`:""}</div></div>
+    ${s.fuerza.length?`<div class="bloque"><div class="etiqueta">Fuerza · descanso ${d.descanso} s</div>${s.fuerza.map((x,i)=>linea(x.ej,x.patron==="pot"?d.potencia:`${d.series} × ${d.reps}`,editable&&`${si}:f:${i}`)).join("")}</div>`:""}
+    <div class="bloque"><div class="etiqueta">${s.cardioLargo?"Cardio":"Bloque metabólico"}</div><div class="tenue">${s.cardioLargo?`20–30 min continuo a ritmo conversacional + ${d.rondas*2} sprints de 30 s`:textoMetabolico(plan.objetivo,d)}</div>${s.cardio.map((id,i)=>linea(id,"",editable&&`${si}:c:${i}`)).join("")}</div>
+    <div class="bloque"><div class="etiqueta">Core</div>${s.core.map((id,i)=>linea(id,d.core,editable&&`${si}:k:${i}`)).join("")}</div>
+    <div class="bloque"><div class="etiqueta">Vuelta a la calma · 5 min</div><div class="tenue">Respiración y estiramientos de los grupos trabajados.</div></div>
+    ${registrar?(hechaHoy?`<span class="chip ok">Registrada hoy</span>`:`<button class="boton chico" data-asistencia="${s.clave}">Marcar sesión hecha hoy</button>`):""}</article>`;}).join("")}</div>`;
+}
+function tablaEvaluaciones(evs,borrable){
+  if(!evs||!evs.length)return`<p class="tenue">Aún no hay evaluaciones.</p>`;
+  return`<div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Peso</th><th>IMC</th><th>Cintura</th>${PRUEBAS.map(p=>`<th>${escapar(p.nombre)}</th>`).join("")}<th>Nivel</th>${borrable?"<th></th>":""}</tr></thead><tbody>${ordenarFecha(evs).map(e=>{const n=nivelDeEvaluacion(e);return`<tr><td>${fechaCorta(e.fecha)}</td><td>${e.peso??"—"} kg</td><td>${calcularImc(e.peso,e.talla)??"—"}</td><td>${e.cintura??"—"} cm</td>${PRUEBAS.map(p=>`<td>${e[p.clave]??"—"} ${p.unidad}</td>`).join("")}<td>${n?NIVEL[n.nivel]:"—"}</td>${borrable?`<td><button class="boton chico" data-borrar-eval="${e.id}">Borrar</button></td>`:""}</tr>`;}).join("")}</tbody></table></div>`;
+}
+function comparativaEvaluaciones(evs){
+  const s=ordenarFecha(evs);if(s.length<2)return"";
+  const a=s[0],b=s[s.length-1];
+  const items=[["Peso","peso","kg",-1],["Cintura","cintura","cm",-1],...PRUEBAS.map(p=>[p.nombre,p.clave,p.unidad,1])];
+  return`<div class="indicadores">${items.filter(([,k])=>a[k]!=null&&b[k]!=null).map(([n,k,u,dir])=>{const dv=Math.round((b[k]-a[k])*10)/10;return`<div class="indicador"><span class="etiqueta">${escapar(n)}</span><b>${dv>0?"+":""}${dv} ${u}</b><span class="chip ${dv===0?"":dv*dir>0?"ok":"warn"}">desde ${fechaCorta(a.fecha)}</span></div>`;}).join("")}</div>`;
+}
+function graficosProgreso(a){
+  const ev=a.evaluaciones||[],pr=a.progreso||[];
+  const marcas=[["sentadilla","Sentadilla"],["pesoMuerto","Peso muerto"],["press","Press de banca"],["remo","Remo"]].filter(([k])=>pr.filter(x=>x[k]!=null).length>=2);
+  return`<div class="rejilla">
+    <div><div class="etiqueta">Peso corporal (kg)</div>${graficoLinea([...ev,...pr].map(e=>({x:e.fecha,y:e.peso})),"kg")}</div>
+    <div><div class="etiqueta">Cintura (cm)</div>${graficoLinea([...ev,...pr].map(e=>({x:e.fecha,y:e.cintura})),"cm")}</div>
+    <div><div class="etiqueta">Sesiones por semana</div>${graficoAsistencia(a.asistencias)}</div>
+    ${marcas.map(([k,n])=>`<div><div class="etiqueta">${n} (kg)</div>${graficoLinea(pr.map(x=>({x:x.fecha,y:x[k]})),"kg")}</div>`).join("")}</div>`;
+}
+function formularioProgreso(){
+  return`<form class="formulario tarjeta" id="formProgreso"><div class="campo ancho"><h3>Nuevo registro de progreso</h3><span class="tenue">Peso, cintura y marcas personales (kg que mueves a 5 repeticiones).</span></div>
+  <div class="campo"><label class="etiqueta" for="pr_fecha">Fecha</label><input id="pr_fecha" type="date" value="${hoy()}" max="${hoy()}" required></div>
+  ${[["peso","Peso (kg)"],["cintura","Cintura (cm)"],["sentadilla","Sentadilla (kg)"],["pesoMuerto","Peso muerto (kg)"],["press","Press de banca (kg)"],["remo","Remo (kg)"]].map(([k,n])=>`<div class="campo"><label class="etiqueta" for="pr_${k}">${n}</label><input id="pr_${k}" type="number" step="0.1" min="0" inputmode="decimal"></div>`).join("")}
+  <div class="campo ancho"><label class="etiqueta" for="pr_nota">Nota</label><input id="pr_nota" maxlength="140"></div>
+  <div class="campo ancho"><button class="boton principal" type="submit">Guardar registro</button></div></form>`;
+}
+function tablaProgreso(a,borrable){
+  const pr=ordenarFecha(a.progreso).reverse();
+  if(!pr.length)return`<p class="tenue">Sin registros todavía.</p>`;
+  return`<div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Peso</th><th>Cintura</th><th>Sentadilla</th><th>P. muerto</th><th>Press</th><th>Remo</th><th>Nota</th><th>Registró</th>${borrable?"<th></th>":""}</tr></thead><tbody>${pr.map(x=>`<tr><td>${fechaCorta(x.fecha)}</td><td>${x.peso??"—"}</td><td>${x.cintura??"—"}</td><td>${x.sentadilla??"—"}</td><td>${x.pesoMuerto??"—"}</td><td>${x.press??"—"}</td><td>${x.remo??"—"}</td><td>${escapar(x.nota||"")}</td><td>${x.autor==="alumno"?"Alumno":"Entrenador"}</td>${borrable?`<td><button class="boton chico" data-borrar-progreso="${x.id}">Borrar</button></td>`:""}</tr>`).join("")}</tbody></table></div>`;
+}
+
+/* =========================================================
+   6. PANTALLAS DE ACCESO
+   ========================================================= */
+function pantallaConfiguracionInicial(){
+  return`<main class="acceso"><form class="tarjeta" id="formInicial"><div class="logo-grande"><img src="${LOGO}" alt="Logo"></div><div class="bienvenida"><div class="etiqueta">Primer uso</div><h2>Crea la cuenta de administrador</h2></div>
+  <p class="tenue">Esta cuenta ve y gestiona a todos los alumnos. Después crearás un usuario para cada alumno.</p>
+  <div class="campo"><label class="etiqueta" for="ini_gym">Nombre del gimnasio</label><input id="ini_gym" required value="${escapar(config().nombre)}"></div>
+  <div class="campo"><label class="etiqueta" for="ini_usuario">Usuario</label><input id="ini_usuario" required autocomplete="username" pattern="[a-zA-Z0-9._\\-]{3,30}" title="3 a 30 caracteres: letras, números, punto, guion"></div>
+  <div class="campo"><label class="etiqueta" for="ini_clave">Contraseña</label><input id="ini_clave" type="password" required minlength="6" autocomplete="new-password"></div>
+  <div class="campo"><label class="etiqueta" for="ini_clave2">Repite la contraseña</label><input id="ini_clave2" type="password" required minlength="6" autocomplete="new-password"></div>
+  <div class="error" id="errorAcceso"></div><button class="boton principal" type="submit">Crear y entrar</button>
+  <div class="bloque"><span class="tenue">¿Solo quieres ver cómo funciona?</span><button class="boton" type="button" data-accion="cargarDemo">Abrir demo con datos de ejemplo</button></div></form></main>`;
+}
+function pantallaIngreso(){
+  const c=config();
+  return`<main class="acceso"><form class="tarjeta" id="formIngreso"><div class="logo-grande"><img src="${LOGO}" alt="Logo de ${escapar(c.nombre)}"></div><div class="bienvenida"><h1>${escapar(c.nombre)}</h1><span class="tenue">${escapar(c.lema)}</span></div>
+  <div class="campo"><label class="etiqueta" for="ing_usuario">Usuario</label><input id="ing_usuario" required autocomplete="username" autofocus></div>
+  <div class="campo"><label class="etiqueta" for="ing_clave">Contraseña</label><input id="ing_clave" type="password" required autocomplete="current-password"></div>
+  <div class="error" id="errorAcceso"></div><button class="boton principal" type="submit">Entrar</button>${datos.demo?`<div class="aviso"><div class="etiqueta">Demo · accesos de prueba</div><div>Entrenador: <b>entrenador</b> / <b>demo123</b></div><div>Alumna: <b>lucia.ramos</b> / <b>demo123</b></div><div class="tenue">Todos los alumnos de ejemplo usan la contraseña demo123.</div><div class="fila" style="margin-top:6px"><button class="boton chico" type="button" data-entrar-demo="entrenador">Entrar como entrenador</button><button class="boton chico" type="button" data-entrar-demo="lucia.ramos">Entrar como alumna</button><button class="boton chico" type="button" data-accion="reiniciarDemo">Reiniciar demo</button></div></div>`:""}
+  <p class="tenue" style="margin:0;font-size:.85rem">¿Olvidaste tu contraseña? Pídele al entrenador que te asigne una nueva.</p></form></main>`;
+}
+
+/* =========================================================
+   7. MÓDULOS DEL ADMINISTRADOR
+   ========================================================= */
+function moduloPanel(){
+  const al=listaAlumnos(),c=config();
+  const pend=al.filter(evaluacionPendiente),venc=al.filter(a=>{const e=estadoMembresia(a);return e.clase!=="ok";});
+  const semana=sumarDias(hoy(),-6),asisSem=al.reduce((s,a)=>s+asistenciasDesde(a,semana),0);
+  const ingresosMes=al.reduce((s,a)=>s+(a.pagos||[]).filter(p=>p.fecha.startsWith(hoy().slice(0,7))).reduce((t,p)=>t+(+p.monto||0),0),0);
+  const inactivos=al.filter(a=>{const r=resumenAvance(a);return!r.actividad||diasEntre(r.actividad,hoy())>=14;});
+  const porNivel=[1,2,3].map(n=>al.filter(a=>nivelAlumno(a)===n).length);
+  return`<section><div class="etiqueta">Panel del entrenador</div><h2>Resumen</h2></section>
+  <section class="indicadores">
+    <div class="indicador"><span class="etiqueta">Alumnos</span><b>${al.length}</b><span class="tenue">${porNivel.map((n,i)=>`${n} ${NIVEL[i+1].toLowerCase()}`).join(" · ")}</span></div>
+    <div class="indicador"><span class="etiqueta">Sesiones últimos 7 días</span><b>${asisSem}</b></div>
+    <div class="indicador"><span class="etiqueta">Cobrado este mes</span><b>${dinero(ingresosMes)}</b></div>
+    <div class="indicador"><span class="etiqueta">Membresías por renovar</span><b>${venc.length}</b><span class="tenue">vencidas o en 7 días</span></div>
+  </section>
+  ${al.length?`<section class="rejilla">
+    ${bloqueAlerta("Evaluación pendiente","Sin evaluar o hace 4+ semanas",pend,a=>{const u=ultimaEvaluacion(a);return u?`Última: ${fechaCorta(u.fecha)}`:"Nunca";})}
+    ${bloqueAlerta("Membresías","Vencidas o por vencer",venc,a=>estadoMembresia(a).texto)}
+    ${bloqueAlerta("Sin actividad","Nada registrado en 14 días",inactivos,a=>{const r=resumenAvance(a);return r.actividad?`Última: ${fechaCorta(r.actividad)}`:"Sin registros";})}
+  </section>`:`<div class="tarjeta vacio">Aún no hay alumnos. Ve a <b>Alumnos</b> y registra al primero.</div>`}`;
+}
+function bloqueAlerta(titulo,sub,lista,detalle){
+  return`<article class="tarjeta pila"><div><h3>${titulo}</h3><span class="tenue">${sub}</span></div>${lista.length?lista.slice(0,8).map(a=>`<div class="extremos"><button class="boton chico" data-abrir="${a.id}">${escapar(a.nombre)}</button><span class="tenue">${detalle(a)}</span></div>`).join("")+(lista.length>8?`<span class="tenue">y ${lista.length-8} más</span>`:""):`<span class="chip ok">Todo al día</span>`}</article>`;
+}
+function moduloAlumnos(){
+  const c=config(),al=listaAlumnos().filter(a=>!ui.buscar||a.nombre.toLowerCase().includes(ui.buscar.toLowerCase()));
+  return`<section class="extremos"><div><div class="etiqueta">Gestión</div><h2>Alumnos</h2></div><div class="fila"><input id="buscarAlumno" type="search" placeholder="Buscar alumno" value="${escapar(ui.buscar)}" style="width:min(220px,100%)" aria-label="Buscar alumno"><button class="boton principal" data-accion="nuevoAlumno">+ Nuevo alumno</button></div></section>
+  ${al.length?`<section class="rejilla">${al.map(a=>{const n=nivelAlumno(a),m=estadoMembresia(a),u=datos.usuarios.find(x=>x.alumnoId===a.id);
+    return`<button class="tarjeta pila" style="text-align:left;cursor:pointer;font:inherit;color:inherit" data-abrir="${a.id}"><span style="font:700 1.25rem var(--display);text-transform:uppercase">${escapar(a.nombre)}</span>
+    <span class="fila">${chipNivel(n)}<span class="chip">${escapar(c.grupos[n])}</span></span>
+    <span class="tenue">${escapar(OBJETIVO[a.objetivo]||"")} · ${a.dias||"?"} días/semana</span>
+    <span class="fila"><span class="chip ${m.clase}">${m.texto}</span>${a.plan?`<span class="chip">Semana ${semanaDelPlan(a.plan,hoy())}/8</span>`:`<span class="chip warn">Sin plan</span>`}${evaluacionPendiente(a)?`<span class="chip warn">Evaluar</span>`:""}${u?"":`<span class="chip bad">Sin usuario</span>`}</span></button>`;}).join("")}</section>`
+  :`<div class="tarjeta vacio">${Object.keys(datos.alumnos).length?"Ningún alumno coincide con la búsqueda.":"Aún no hay alumnos. Pulsa <b>+ Nuevo alumno</b>."}</div>`}`;
+}
+function moduloAvance(){
+  const filas=listaAlumnos().map(a=>({a,n:nivelAlumno(a),r:resumenAvance(a),sem:a.plan?semanaDelPlan(a.plan,hoy()):null}));
+  const {campo,dir}=ui.orden;
+  const valor=f=>({nombre:f.a.nombre,nivel:f.n,semana:f.sem??-1,asist:f.r.asist4,peso:f.r.peso??999,cintura:f.r.cintura??999,puntaje:f.r.puntaje??-999,actividad:f.r.actividad||""})[campo];
+  filas.sort((x,y)=>{const a=valor(x),b=valor(y);return(a<b?-1:a>b?1:0)*dir;});
+  const cab=(k,t)=>`<th><button data-ordenar="${k}">${t}${campo===k?(dir>0?" ▲":" ▼"):""}</button></th>`;
+  const fmt=(v,u,mejorSiBaja)=>v==null?"—":`<span class="${v===0?"":(mejorSiBaja?v<0:v>0)?"mejora":"retroceso"}">${v>0?"+":""}${v} ${u}</span>`;
+  return`<section><div class="etiqueta">Seguimiento</div><h2>Avance de alumnos</h2><p class="tenue" style="margin:4px 0 0">Cambios desde el primer registro de cada alumno. Pulsa un encabezado para ordenar y una fila para abrir la ficha.</p></section>
+  ${filas.length?`<section class="tarjeta tabla-contenedor"><table><thead><tr>${cab("nombre","Alumno")}${cab("nivel","Nivel")}${cab("semana","Semana plan")}${cab("asist","Sesiones 4 sem")}${cab("peso","Δ Peso")}${cab("cintura","Δ Cintura")}${cab("puntaje","Δ Puntaje pruebas")}${cab("actividad","Última actividad")}<th>Membresía</th></tr></thead><tbody>
+  ${filas.map(({a,n,r,sem})=>{const m=estadoMembresia(a);return`<tr class="clic" data-abrir="${a.id}" tabindex="0"><td><b>${escapar(a.nombre)}</b></td><td>${chipNivel(n)}</td><td>${sem?`${sem}/8 · ${faseDeSemana(sem).nombre}`:"Sin plan"}</td><td>${r.asist4} / ${(a.dias||3)*4}</td><td>${fmt(r.peso,"kg",a.objetivo!=="fuerza")}</td><td>${fmt(r.cintura,"cm",true)}</td><td>${fmt(r.puntaje,"pts",false)}</td><td>${r.actividad?fechaCorta(r.actividad):"—"}</td><td><span class="chip ${m.clase}">${m.texto}</span></td></tr>`;}).join("")}
+  </tbody></table></section>`:`<div class="tarjeta vacio">Cuando registres alumnos verás aquí su avance comparado.</div>`}`;
+}
+function moduloAsistencia(){
+  const al=listaAlumnos(),f=hoy();
+  return`<section><div class="etiqueta">Control diario</div><h2>Asistencia de hoy</h2><p class="tenue" style="margin:4px 0 0">${fechaCorta(f)} · marca a cada alumno al llegar. Se registra con la siguiente sesión de su plan.</p></section>
+  ${al.length?`<section class="tarjeta tabla-contenedor"><table><thead><tr><th>Alumno</th><th>Grupo</th><th>Membresía</th><th>Sesión que toca</th><th></th></tr></thead><tbody>${al.map(a=>{const m=estadoMembresia(a),ya=(a.asistencias||[]).find(x=>x.fecha===f),sig=siguienteSesion(a);
+    return`<tr><td>${escapar(a.nombre)}</td><td>${escapar(config().grupos[nivelAlumno(a)])}</td><td><span class="chip ${m.clase}">${m.texto}</span></td><td>${sig?escapar(sig.nombre):"Sin plan"}</td><td>${ya?`<span class="chip ok">Asistió</span> <button class="boton chico" data-quitar-asistencia-hoy="${a.id}">Deshacer</button>`:`<button class="boton chico principal" data-marcar-hoy="${a.id}">Marcar asistencia</button>`}</td></tr>`;}).join("")}</tbody></table></section>`:`<div class="tarjeta vacio">Registra alumnos para controlar la asistencia.</div>`}`;
+}
+function siguienteSesion(a){
+  if(!a.plan)return null;const ses=a.plan.sesiones;const ult=ordenarFecha(a.asistencias).pop();
+  if(!ult)return ses[0];const i=ses.findIndex(s=>s.clave===ult.sesion);return ses[(i+1)%ses.length];
+}
+function moduloPagos(){
+  const al=listaAlumnos(),c=config(),mes=hoy().slice(0,7);
+  const pagos=al.flatMap(a=>(a.pagos||[]).map(p=>({...p,alumno:a.nombre,alumnoId:a.id}))).sort((a,b)=>a.fecha<b.fecha?1:-1);
+  const totalMes=pagos.filter(p=>p.fecha.startsWith(mes)).reduce((s,p)=>s+(+p.monto||0),0);
+  const porVencer=al.map(a=>({a,m:estadoMembresia(a)})).filter(x=>x.m.clase!=="ok").sort((x,y)=>(x.m.dias??-999)-(y.m.dias??-999));
+  return`<section><div class="etiqueta">Cobranza</div><h2>Membresías y pagos</h2></section>
+  <section class="indicadores"><div class="indicador"><span class="etiqueta">Cobrado este mes</span><b>${dinero(totalMes)}</b></div><div class="indicador"><span class="etiqueta">Activas</span><b>${al.filter(a=>estadoMembresia(a).clase==="ok").length}</b></div><div class="indicador"><span class="etiqueta">Por renovar</span><b>${porVencer.length}</b></div></section>
+  <section class="tarjeta pila"><h3>Por renovar</h3>${porVencer.length?`<div class="tabla-contenedor"><table><thead><tr><th>Alumno</th><th>Plan</th><th>Estado</th><th></th></tr></thead><tbody>${porVencer.map(({a,m})=>`<tr><td>${escapar(a.nombre)}</td><td>${escapar(a.membresia?.planNombre||"—")}</td><td><span class="chip ${m.clase}">${m.texto}</span></td><td><button class="boton chico" data-abrir-pago="${a.id}">Registrar pago</button></td></tr>`).join("")}</tbody></table></div>`:`<span class="chip ok">Todas las membresías al día</span>`}</section>
+  <section class="tarjeta pila"><h3>Últimos pagos</h3>${pagos.length?`<div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Alumno</th><th>Concepto</th><th>Medio</th><th>Monto</th></tr></thead><tbody>${pagos.slice(0,30).map(p=>`<tr><td>${fechaCorta(p.fecha)}</td><td>${escapar(p.alumno)}</td><td>${escapar(p.concepto)}</td><td>${escapar(p.medio||"")}</td><td>${dinero(p.monto)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="tenue">Aún no hay pagos registrados.</p>`}</section>
+  <section class="tarjeta pila"><h3>Planes de membresía</h3><div class="tabla-contenedor"><table><thead><tr><th>Plan</th><th>Duración</th><th>Precio</th></tr></thead><tbody>${c.planes.map(p=>`<tr><td>${escapar(p.nombre)}</td><td>${p.dias} días</td><td>${dinero(p.precio)}</td></tr>`).join("")}</tbody></table></div><span class="tenue">Puedes cambiarlos en Ajustes.</span></section>`;
+}
+function moduloAjustes(){
+  const c=config(),admins=datos.usuarios.filter(u=>u.rol==="admin");
+  return`<section><div class="etiqueta">Configuración</div><h2>Ajustes</h2></section>
+  <form class="formulario tarjeta" id="formAjustes"><div class="campo ancho"><h3>Tu gimnasio</h3></div>
+  <div class="campo"><label class="etiqueta" for="aj_nombre">Nombre del gimnasio</label><input id="aj_nombre" required value="${escapar(c.nombre)}"></div>
+  <div class="campo"><label class="etiqueta" for="aj_lema">Lema</label><input id="aj_lema" value="${escapar(c.lema)}"></div>
+  <div class="campo"><label class="etiqueta" for="aj_entrenador">Entrenador a cargo</label><input id="aj_entrenador" value="${escapar(c.entrenador)}"></div>
+  <div class="campo"><label class="etiqueta" for="aj_color">Color de marca</label><input id="aj_color" type="color" value="${escapar(c.color)}" style="height:42px;padding:4px"></div>
+  ${[1,2,3].map(k=>`<div class="campo"><label class="etiqueta" for="aj_g${k}">Grupo ${NIVEL[k].toLowerCase()}</label><input id="aj_g${k}" value="${escapar(c.grupos[k])}"></div>`).join("")}
+  <div class="campo ancho"><span class="etiqueta">Planes de membresía</span></div>
+  ${c.planes.map((p,i)=>`<div class="campo"><label class="etiqueta" for="aj_pn${i}">Nombre</label><input id="aj_pn${i}" value="${escapar(p.nombre)}"></div><div class="campo"><label class="etiqueta" for="aj_pd${i}">Días de vigencia</label><input id="aj_pd${i}" type="number" min="1" value="${p.dias}"></div><div class="campo"><label class="etiqueta" for="aj_pp${i}">Precio (S/)</label><input id="aj_pp${i}" type="number" min="0" step="0.1" value="${p.precio}"></div>`).join("")}
+  <div class="campo ancho"><button class="boton principal" type="submit">Guardar ajustes</button></div></form>
+  <form class="formulario tarjeta" id="formClaveAdmin"><div class="campo ancho"><h3>Mi contraseña</h3><span class="tenue">Usuario: <b>${escapar(usuarioActual.usuario)}</b> · administradores: ${admins.length}</span></div>
+  <div class="campo"><label class="etiqueta" for="ca_actual">Contraseña actual</label><input id="ca_actual" type="password" required autocomplete="current-password"></div>
+  <div class="campo"><label class="etiqueta" for="ca_nueva">Nueva contraseña</label><input id="ca_nueva" type="password" required minlength="6" autocomplete="new-password"></div>
+  <div class="campo ancho"><button class="boton" type="submit">Cambiar contraseña</button></div></form>
+  <section class="tarjeta pila"><h3>Copia de seguridad</h3><p class="tenue" style="margin:0">Los datos se guardan solo en este navegador. Descarga una copia con frecuencia; también sirve para pasar los datos a otro equipo.</p>
+  <div class="fila"><button class="boton principal" data-accion="exportar">Descargar copia (.json)</button><label class="boton" for="importarArchivo">Restaurar copia</label><input id="importarArchivo" type="file" accept="application/json,.json" hidden></div></section>`;
+}
+
+/* ===== Ficha del alumno (vista del administrador) ===== */
+function formularioPerfil(a,nuevo){
+  a=a||{nombre:"",objetivo:"recomp",dias:3,limitaciones:[],aptoMedico:false};
+  return`<form class="formulario tarjeta" id="formPerfil">
+  <div class="campo ancho"><label class="etiqueta" for="pf_nombre">Nombre completo</label><input id="pf_nombre" required value="${escapar(a.nombre)}"></div>
+  <div class="campo"><label class="etiqueta" for="pf_edad">Edad</label><input id="pf_edad" type="number" min="10" max="100" value="${escapar(a.edad??"")}"></div>
+  <div class="campo"><label class="etiqueta" for="pf_sexo">Sexo</label><select id="pf_sexo"><option value="">—</option>${["Femenino","Masculino"].map(x=>`<option ${a.sexo===x?"selected":""}>${x}</option>`).join("")}</select></div>
+  <div class="campo"><label class="etiqueta" for="pf_telefono">Teléfono / WhatsApp</label><input id="pf_telefono" type="tel" value="${escapar(a.telefono??"")}"></div>
+  <div class="campo"><label class="etiqueta" for="pf_objetivo">Objetivo</label><select id="pf_objetivo">${Object.entries(OBJETIVO).map(([k,v])=>`<option value="${k}" ${a.objetivo===k?"selected":""}>${v}</option>`).join("")}</select></div>
+  <div class="campo"><label class="etiqueta" for="pf_dias">Días por semana</label><select id="pf_dias">${[2,3,4,5].map(d=>`<option ${+a.dias===d?"selected":""}>${d}</option>`).join("")}</select></div>
+  <div class="campo"><label class="etiqueta" for="pf_nivel">Nivel</label><select id="pf_nivel"><option value="">Automático (según evaluación)</option>${[1,2,3].map(n=>`<option value="${n}" ${+a.nivelManual===n?"selected":""}>${NIVEL[n]} (manual)</option>`).join("")}</select></div>
+  <div class="campo ancho"><span class="etiqueta">Lesiones o limitaciones</span><div class="opciones">${Object.entries(LIMITACION).map(([k,v])=>`<label><input type="checkbox" name="limitacion" value="${k}" ${(a.limitaciones||[]).includes(k)?"checked":""}> ${v}</label>`).join("")}</div></div>
+  <div class="campo ancho"><label class="etiqueta" for="pf_salud">Ficha de salud (condiciones, medicación, observaciones)</label><textarea id="pf_salud">${escapar(a.salud??"")}</textarea></div>
+  <div class="campo ancho"><div class="opciones"><label><input type="checkbox" id="pf_apto" ${a.aptoMedico?"checked":""}> Presentó apto médico</label></div></div>
+  <div class="campo ancho"><label class="etiqueta" for="pf_privadas">Notas privadas (el alumno no las ve)</label><textarea id="pf_privadas">${escapar(a.notasPrivadas??"")}</textarea></div>
+  <div class="campo ancho fila"><button class="boton principal" type="submit">${nuevo?"Crear alumno":"Guardar cambios"}</button>${nuevo?`<button class="boton" type="button" data-ir="alumnos">Cancelar</button>`:""}</div></form>`;
+}
+function leerPerfil(base){
+  const a=Object.assign({},base);
+  a.nombre=$("#pf_nombre").value.trim();a.edad=numero($("#pf_edad").value);a.sexo=$("#pf_sexo").value;a.telefono=$("#pf_telefono").value.trim();
+  a.objetivo=$("#pf_objetivo").value;a.dias=+$("#pf_dias").value;a.nivelManual=numero($("#pf_nivel").value);
+  a.limitaciones=[...document.querySelectorAll('input[name="limitacion"]:checked')].map(x=>x.value);
+  a.salud=$("#pf_salud").value;a.aptoMedico=$("#pf_apto").checked;a.notasPrivadas=$("#pf_privadas").value;
+  return a;
+}
+function puntajeHtml(v){const n=nivelDeEvaluacion(v);return PRUEBAS.map(p=>{const s=puntajePrueba(p,v[p.clave]);return`<div>${escapar(p.nombre)}<b>${s?s+"/3":"—"}</b></div>`;}).join("")+`<div>Nivel resultante<b>${n?NIVEL[n.nivel]:"—"}</b></div>`;}
+
+function fichaAlumno(){
+  const a=datos.alumnos[ui.alumnoId];if(!a){ui.vista="alumnos";return moduloAlumnos();}
+  const n=nivelAlumno(a),c=config(),usuario=datos.usuarios.find(u=>u.alumnoId===a.id);
+  const pestanas=[["perfil","Perfil y salud"],["acceso","Usuario"],["evaluaciones","Evaluaciones"],["plan","Plan"],["progreso","Progreso"],["membresia","Membresía"],["vista","Vista del alumno"]];
+  let cuerpo="";
+  if(ui.pestana==="perfil")cuerpo=formularioPerfil(a)+`<div class="fila">${ui.confirmar==="eliminar"?`<span>¿Eliminar a ${escapar(a.nombre)}, su usuario y todos sus datos? No se puede deshacer.</span><button class="boton peligro" data-accion="eliminarConfirmado">Sí, eliminar</button><button class="boton" data-accion="cancelar">Cancelar</button>`:`<button class="boton peligro chico" data-accion="eliminar">Eliminar alumno</button>`}</div>`;
+  if(ui.pestana==="acceso")cuerpo=`${ui.credenciales?`<div class="aviso"><div class="etiqueta">Datos de acceso para entregar al alumno</div>Usuario: <b>${escapar(ui.credenciales.usuario)}</b> · Contraseña: <b>${escapar(ui.credenciales.clave)}</b><div class="tenue">Por seguridad no se vuelve a mostrar: anótala ahora o asigna otra después.</div></div>`:""}<form class="formulario tarjeta" id="formUsuarioAlumno"><div class="campo ancho"><h3>${usuario?"Usuario del alumno":"Crear usuario para el alumno"}</h3><span class="tenue">${usuario?"El alumno entra con este usuario y solo ve su propio plan, progreso, evaluaciones y membresía.":"Con este usuario el alumno entrará a su apartado personal. Entrégale el usuario y la contraseña en persona."}</span></div>
+    <div class="campo"><label class="etiqueta" for="ua_usuario">Usuario</label><input id="ua_usuario" required pattern="[a-zA-Z0-9._\\-]{3,30}" title="3 a 30 caracteres: letras, números, punto, guion" value="${escapar(usuario?.usuario||sugerirUsuario(a.nombre))}" autocomplete="off"></div>
+    <div class="campo"><label class="etiqueta" for="ua_clave">${usuario?"Nueva contraseña (opcional)":"Contraseña"}</label><input id="ua_clave" type="text" ${usuario?"":"required"} minlength="6" autocomplete="off" value="${usuario?"":claveSugerida()}"></div>
+    <div class="campo ancho"><div class="error" id="errorUsuario"></div><div class="fila"><button class="boton principal" type="submit">${usuario?"Guardar cambios":"Crear usuario"}</button>${usuario?(usuario.activo===false?`<button type="button" class="boton" data-accion="activarUsuario">Reactivar acceso</button><span class="chip bad">Acceso suspendido</span>`:`<button type="button" class="boton peligro" data-accion="suspenderUsuario">Suspender acceso</button><span class="chip ok">Acceso activo</span>`):""}</div></div></form>`;
+  if(ui.pestana==="evaluaciones"){const u=ultimaEvaluacion(a);
+    cuerpo=`<form class="formulario tarjeta" id="formEvaluacion"><div class="campo ancho"><h3>Nueva evaluación</h3><span class="tenue">Composición corporal y 4 pruebas que definen el nivel y el grupo. Cortes referenciales para adultos; puedes fijar el nivel a mano en el perfil.</span></div>
+    <div class="campo"><label class="etiqueta" for="ev_fecha">Fecha</label><input id="ev_fecha" type="date" value="${hoy()}" required></div>
+    ${[["peso","Peso (kg)"],["talla","Talla (cm)",u?.talla],["cintura","Cintura (cm)"],["cadera","Cadera (cm)"],["grasa","% grasa (opcional)"],["fc","FC en reposo (lpm)"]].map(([k,t,v])=>`<div class="campo"><label class="etiqueta" for="ev_${k}">${t}</label><input id="ev_${k}" type="number" step="0.1" min="0" inputmode="decimal" value="${v??""}"></div>`).join("")}
+    ${PRUEBAS.map(p=>`<div class="campo"><label class="etiqueta" for="ev_${p.clave}">${p.nombre} (${p.unidad})</label><input id="ev_${p.clave}" type="number" min="0" inputmode="numeric" data-prueba></div>`).join("")}
+    <div class="campo"><label class="etiqueta" for="ev_salto">Salto largo (cm)</label><input id="ev_salto" type="number" min="0"></div>
+    <div class="campo"><label class="etiqueta" for="ev_flex">Flexibilidad sit &amp; reach (cm)</label><input id="ev_flex" type="number" step="0.5"></div>
+    <div class="campo ancho"><div class="puntaje" id="cajaPuntaje">${puntajeHtml({})}</div></div>
+    <div class="campo ancho"><label class="etiqueta" for="ev_nota">Observaciones</label><textarea id="ev_nota"></textarea></div>
+    <div class="campo ancho"><button class="boton principal" type="submit">Guardar evaluación</button></div></form>
+    <section class="tarjeta pila"><div class="extremos"><h3>Historial</h3>${u?`<span class="tenue">Próxima evaluación sugerida: ${fechaCorta(sumarDias(u.fecha,28))}</span>`:""}</div>${comparativaEvaluaciones(a.evaluaciones)}${tablaEvaluaciones(a.evaluaciones,true)}</section>`;}
+  if(ui.pestana==="plan"){
+    if(!a.plan||ui.confirmar==="regenerar"){
+      cuerpo=`<section class="tarjeta pila"><h3>${a.plan?"Regenerar plan":"Generar plan de 8 semanas"}</h3>
+      <p class="tenue" style="margin:0">Se arma con el perfil y la evaluación: <b>${escapar(OBJETIVO[a.objetivo])}</b>, <b>${NIVEL[n]}</b>, <b>${a.dias} días por semana</b>${(a.limitaciones||[]).length?`, evitando ejercicios que cargan: <b>${a.limitaciones.map(l=>LIMITACION[l]).join(", ")}</b>`:""}. Fases: adaptación (semanas 1–2), desarrollo (3–5), intensificación (6–7) y descarga con reevaluación (8).</p>
+      ${!ultimaEvaluacion(a)?`<div class="aviso">Este alumno aún no tiene evaluación; conviene evaluarlo antes para ajustar el nivel.</div>`:""}
+      <div class="fila"><label class="etiqueta" for="pl_inicio">Inicio</label><input id="pl_inicio" type="date" value="${hoy()}" style="width:auto"><button class="boton principal" data-accion="generarPlan">${a.plan?"Sí, regenerar (reemplaza el actual)":"Generar plan"}</button>${a.plan?`<button class="boton" data-accion="cancelar">Cancelar</button>`:""}</div></section>`;
+    }else{
+      const act=semanaDelPlan(a.plan,hoy()),sem=ui.semana||act;
+      cuerpo=`<section class="tarjeta pila"><div class="extremos"><div><h3>${escapar(OBJETIVO[a.plan.objetivo])} · ${NIVEL[a.plan.nivel]}</h3><span class="tenue">Inicio ${fechaCorta(a.plan.inicio)} · ${a.plan.dias} sesiones por semana · cambia cualquier ejercicio desde su lista</span></div><button class="boton chico" data-accion="regenerar">Regenerar</button></div>
+      ${a.plan.nivel!==n?`<div class="aviso">El nivel actual (${NIVEL[n]}) no coincide con el del plan (${NIVEL[a.plan.nivel]}). Regenera el plan para ajustar ejercicios y cargas.</div>`:""}
+      ${selectorSemanas(sem,act)}${vistaSesiones(a.plan,sem,{editable:true,registrar:true,asistencias:a.asistencias||[]})}
+      <div class="campo"><label class="etiqueta" for="pl_nota">Nota para el alumno</label><textarea id="pl_nota">${escapar(a.plan.nota||"")}</textarea><div><button class="boton chico" data-accion="guardarNota">Guardar nota</button></div></div></section>`;
+    }
+  }
+  if(ui.pestana==="progreso")cuerpo=formularioProgreso()+`<section class="tarjeta pila"><h3>Evolución</h3>${graficosProgreso(a)}</section><section class="tarjeta pila"><h3>Registros</h3>${tablaProgreso(a,true)}
+    <div class="etiqueta">Asistencias recientes (${(a.asistencias||[]).length} en total)</div><div class="fila">${ordenarFecha(a.asistencias).reverse().slice(0,12).map(x=>`<span class="chip">${fechaCorta(x.fecha)} · ${escapar(PLANTILLAS[x.sesion]?.nombre||x.sesion)} <button class="boton chico" style="padding:0 4px;border:0;background:transparent" aria-label="Quitar asistencia" data-quitar-asistencia="${x.id}">×</button></span>`).join("")||`<span class="tenue">Sin asistencias.</span>`}</div></section>`;
+  if(ui.pestana==="membresia"){const m=estadoMembresia(a);
+    cuerpo=`<section class="tarjeta pila"><div class="extremos"><h3>Membresía actual</h3><span class="chip ${m.clase}">${m.texto}</span></div>${a.membresia?`<span class="tenue">${escapar(a.membresia.planNombre)} · desde ${fechaCorta(a.membresia.inicio)} hasta ${fechaCorta(a.membresia.vence)}</span>`:""}</section>
+    <form class="formulario tarjeta" id="formPago"><div class="campo ancho"><h3>Registrar pago y renovar</h3><span class="tenue">Si la membresía sigue activa, la nueva vigencia empieza al terminar la actual.</span></div>
+    <div class="campo"><label class="etiqueta" for="pg_plan">Plan</label><select id="pg_plan">${c.planes.map(p=>`<option value="${p.id}">${escapar(p.nombre)} · ${dinero(p.precio)}</option>`).join("")}</select></div>
+    <div class="campo"><label class="etiqueta" for="pg_fecha">Fecha de pago</label><input id="pg_fecha" type="date" value="${hoy()}" required></div>
+    <div class="campo"><label class="etiqueta" for="pg_monto">Monto (S/)</label><input id="pg_monto" type="number" min="0" step="0.1" value="${c.planes[0]?.precio??""}" required></div>
+    <div class="campo"><label class="etiqueta" for="pg_medio">Medio</label><select id="pg_medio">${["Efectivo","Yape","Plin","Transferencia","Tarjeta"].map(x=>`<option>${x}</option>`).join("")}</select></div>
+    <div class="campo ancho"><button class="boton principal" type="submit">Registrar pago</button></div></form>
+    <section class="tarjeta pila"><h3>Historial de pagos</h3>${(a.pagos||[]).length?`<div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Medio</th><th>Monto</th><th></th></tr></thead><tbody>${ordenarFecha(a.pagos).reverse().map(p=>`<tr><td>${fechaCorta(p.fecha)}</td><td>${escapar(p.concepto)}</td><td>${escapar(p.medio||"")}</td><td>${dinero(p.monto)}</td><td><button class="boton chico" data-borrar-pago="${p.id}">Borrar</button></td></tr>`).join("")}</tbody></table></div>`:`<p class="tenue">Sin pagos registrados.</p>`}</section>`;}
+  if(ui.pestana==="vista")cuerpo=`<div class="aviso">Así ve su apartado ${escapar(a.nombre)} al entrar con su usuario.</div><div style="border:2px dashed var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:16px">${apartadoAlumno(a,"plan",true)}</div>`;
+  return`<div><button class="boton chico" data-ir="alumnos">← Alumnos</button></div>
+  <section><h2>${escapar(a.nombre)}</h2><div class="fila" style="margin-top:6px">${chipNivel(n)}<span class="chip">${escapar(c.grupos[n])}</span><span class="chip ${estadoMembresia(a).clase}">${estadoMembresia(a).texto}</span>${usuario?`<span class="chip">Usuario: ${escapar(usuario.usuario)}</span>`:`<span class="chip bad">Sin usuario</span>`}</div></section>
+  <nav class="menu" style="border:0" aria-label="Secciones de la ficha"><div class="fila" style="gap:4px">${pestanas.map(([k,v])=>`<button class="pestana" data-pestana="${k}" aria-current="${ui.pestana===k}">${v}</button>`).join("")}</div></nav>${cuerpo}`;
+}
+function sugerirUsuario(nombre){
+  const p=(nombre||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z ]/g,"").trim().split(/\s+/);
+  let base=(p[0]||"alumno")+(p[1]?"."+p[1]:"");let u=base,i=2;while(datos.usuarios.some(x=>x.usuario===u))u=base+i++;return u;
+}
+function claveSugerida(){const c="abcdefghjkmnpqrstuvwxyz23456789";let s="";const r=new Uint32Array(8);(window.crypto||{getRandomValues:a=>a.map(()=>Math.random()*1e9)}).getRandomValues(r);r.forEach(x=>s+=c[x%c.length]);return s;}
+
+/* =========================================================
+   8. APARTADO PERSONAL DEL ALUMNO
+   ========================================================= */
+function apartadoAlumno(a,seccion,previa){
+  const c=config(),n=nivelAlumno(a),ev=ordenarFecha(a.evaluaciones),ue=ev[ev.length-1],m=estadoMembresia(a);
+  const act=a.plan?semanaDelPlan(a.plan,hoy()):null,sem=ui.semana||act;
+  const mes=hoy().slice(0,7),asisMes=(a.asistencias||[]).filter(x=>x.fecha.startsWith(mes)).length;
+  let cuerpo="";
+  if(seccion==="plan")cuerpo=a.plan?`${a.plan.nota?`<div class="aviso"><div class="etiqueta">Nota de tu entrenador</div>${escapar(a.plan.nota)}</div>`:""}<section class="tarjeta pila"><div class="extremos"><h3>Tu entrenamiento</h3>${selectorSemanas(sem,act)}</div>${vistaSesiones(a.plan,sem,{registrar:!previa,asistencias:a.asistencias||[]})}</section>`:`<div class="tarjeta vacio">Tu entrenador está preparando tu plan. Aparecerá aquí apenas esté listo.</div>`;
+  if(seccion==="progreso")cuerpo=`${previa?"":formularioProgreso()}<section class="tarjeta pila"><h3>Tu evolución</h3>${comparativaEvaluaciones(ev)}${graficosProgreso(a)}</section><section class="tarjeta pila"><h3>Tus registros</h3>${tablaProgreso(a,false)}</section>`;
+  if(seccion==="evaluaciones")cuerpo=`<section class="tarjeta pila"><h3>Tus evaluaciones</h3>${tablaEvaluaciones(ev,false)}</section>`;
+  if(seccion==="cuenta")cuerpo=`<section class="tarjeta pila"><h3>Tu membresía</h3><span class="chip ${m.clase}">${m.texto}</span>${a.membresia?`<span class="tenue">${escapar(a.membresia.planNombre)} · ${fechaCorta(a.membresia.inicio)} al ${fechaCorta(a.membresia.vence)}</span>`:""}</section>
+    <form class="formulario tarjeta" id="formClaveAlumno"><div class="campo ancho"><h3>Cambiar contraseña</h3></div><div class="campo"><label class="etiqueta" for="cl_actual">Contraseña actual</label><input id="cl_actual" type="password" required autocomplete="current-password"></div><div class="campo"><label class="etiqueta" for="cl_nueva">Nueva contraseña</label><input id="cl_nueva" type="password" required minlength="6" autocomplete="new-password"></div><div class="campo ancho"><button class="boton principal" type="submit">Cambiar contraseña</button></div></form>`;
+  return`<section><div class="etiqueta">${escapar(c.nombre)}</div><h2>Hola, ${escapar(a.nombre.split(" ")[0])}</h2><div class="tenue">${escapar(OBJETIVO[a.objetivo]||"")}${c.entrenador?` · Entrenador: ${escapar(c.entrenador)}`:""}</div></section>
+  <section class="indicadores">
+    <div class="indicador"><span class="etiqueta">Nivel</span><b>${NIVEL[n]}</b><span class="tenue">${escapar(c.grupos[n])}</span></div>
+    <div class="indicador"><span class="etiqueta">Plan</span><b>${act?`Semana ${act}/8`:"—"}</b><span class="tenue">${act?faseDeSemana(act).nombre:"En preparación"}</span></div>
+    <div class="indicador"><span class="etiqueta">Sesiones este mes</span><b>${asisMes}</b><span class="tenue">${(a.asistencias||[]).length} en total</span></div>
+    <div class="indicador"><span class="etiqueta">Próxima evaluación</span><b>${ue?fechaCorta(sumarDias(ue.fecha,28)):"Pendiente"}</b><span class="tenue">Membresía: ${m.texto.toLowerCase()}</span></div>
+  </section>${cuerpo}`;
+}
+
+/* =========================================================
+   9. PINTADO GENERAL
+   ========================================================= */
+function pintar(){
+  aplicarMarca();
+  const raiz=$("#raiz");
+  if(!datos.usuarios.some(u=>u.rol==="admin")){raiz.innerHTML=pantallaConfiguracionInicial();return;}
+  if(!usuarioActual){raiz.innerHTML=pantallaIngreso();return;}
+  const c=config();
+  const menu=esAdmin()?[["panel","Panel"],["alumnos","Alumnos"],["avance","Avance"],["asistencia","Asistencia"],["pagos","Pagos"],["ajustes","Ajustes"]]
+    :[["plan","Mi plan"],["progreso","Mi progreso"],["evaluaciones","Evaluaciones"],["cuenta","Mi cuenta"]];
+  const activa=ui.vista==="ficha"||ui.vista==="nuevo"?"alumnos":ui.vista;
+  let contenido="";
+  if(esAdmin()){
+    contenido={panel:moduloPanel,alumnos:moduloAlumnos,avance:moduloAvance,asistencia:moduloAsistencia,pagos:moduloPagos,ajustes:moduloAjustes,ficha:fichaAlumno,
+      nuevo:()=>`<section><div class="etiqueta">Registro</div><h2>Nuevo alumno</h2></section>${formularioPerfil(null,true)}`}[ui.vista]?.()||moduloPanel();
+  }else{
+    const a=alumnoDelUsuario();
+    contenido=a?apartadoAlumno(a,ui.vista,false):`<div class="tarjeta vacio">Tu ficha no está disponible. Consulta con tu entrenador.</div>`;
+  }
+  raiz.innerHTML=`<header class="cabecera"><div class="contenedor"><div class="marca"><div class="marca-logo"><img src="${LOGO}" alt="Logo de ${escapar(c.nombre)}"></div><div style="min-width:0"><h1>${escapar(c.nombre)}</h1><small>${esAdmin()?"Panel del entrenador":"Mi apartado"}</small></div></div>
+  <div class="sesion"><span class="nombre-usuario tenue">${escapar(usuarioActual.usuario)}</span><button class="boton chico" data-accion="salir">Salir</button></div></div>
+  <nav class="menu" aria-label="Navegación principal"><div class="contenedor">${menu.map(([k,v])=>`<button class="pestana" data-ir="${k}" aria-current="${activa===k}">${v}</button>`).join("")}</div></nav></header>
+  <main class="contenedor">${datos.demo?`<div class="aviso">Estás viendo una <b>demo con datos de ejemplo</b>. Las personas y cifras son ficticias.</div>`:""}${contenido}</main>`;
+}
+
+/* =========================================================
+   10. ACCIONES
+   ========================================================= */
+function actualizarAlumno(id,cambio){const a=structuredClone(datos.alumnos[id]);cambio(a);a.actualizado=new Date().toISOString();datos.alumnos[id]=a;guardarDatos();pintar();}
+function registrarAsistencia(id,clave){
+  actualizarAlumno(id,a=>{a.asistencias=a.asistencias||[];if(!a.asistencias.some(x=>x.fecha===hoy()&&x.sesion===clave))a.asistencias.push({id:nuevoId(),fecha:hoy(),sesion:clave});});
+}
+function leerRegistroProgreso(autor){
+  const r={id:nuevoId(),fecha:$("#pr_fecha").value,nota:$("#pr_nota").value.trim(),autor};
+  ["peso","cintura","sentadilla","pesoMuerto","press","remo"].forEach(k=>r[k]=numero($("#pr_"+k).value));
+  return r;
+}
+async function descargarCopia(){
+  const nombre=`copia-gimnasio-${hoy()}.json`,texto=JSON.stringify(datos,null,2);
+  // Dentro de claude.ai la descarga pasa por el permiso del visor; en un archivo local se usa un enlace normal
+  const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
+  if(dl){try{await dl.save({filename:nombre,data:new Blob([texto],{type:"application/json"})});}catch(_){avisar("La descarga se canceló.");}return;}
+  const blob=new Blob([JSON.stringify(datos,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+document.addEventListener("submit",async e=>{
+  e.preventDefault();const f=e.target.id;
+  if(f==="formInicial"){
+    const usuario=$("#ini_usuario").value.trim(),clave=$("#ini_clave").value;
+    if(clave!==$("#ini_clave2").value){$("#errorAcceso").textContent="Las contraseñas no coinciden.";return;}
+    const sal=nuevoId(),u={id:nuevoId(),usuario,sal,hash:await hashClave(clave,sal),rol:"admin",activo:true};
+    datos.usuarios.push(u);datos.config={...config(),nombre:$("#ini_gym").value.trim()||CONFIG_INICIAL.nombre};guardarDatos();
+    try{sessionStorage.setItem(CLAVE_SESION,u.id);}catch(_){}usuarioActual=u;ui.vista="panel";pintar();return;
+  }
+  if(f==="formIngreso"){
+    const nombre=$("#ing_usuario").value.trim().toLowerCase(),u=datos.usuarios.find(x=>x.usuario.toLowerCase()===nombre);
+    const ok=u&&(await hashClave($("#ing_clave").value,u.sal))===u.hash;
+    if(!ok){$("#errorAcceso").textContent="Usuario o contraseña incorrectos.";return;}
+    if(u.activo===false){$("#errorAcceso").textContent="Tu acceso está suspendido. Consulta con tu entrenador.";return;}
+    try{sessionStorage.setItem(CLAVE_SESION,u.id);}catch(_){}usuarioActual=u;Object.assign(ui,{vista:u.rol==="admin"?"panel":"plan",semana:null});pintar();return;
+  }
+  if(f==="formPerfil"){
+    if(ui.vista==="nuevo"){const id=nuevoId(),a=leerPerfil({id,evaluaciones:[],progreso:[],asistencias:[],pagos:[],plan:null,creado:hoy()});if(!a.nombre)return;
+      datos.alumnos[id]=a;guardarDatos();Object.assign(ui,{vista:"ficha",alumnoId:id,pestana:"acceso"});pintar();avisar("Alumno creado. Ahora crea su usuario.");}
+    else{const id=ui.alumnoId;const a=leerPerfil(datos.alumnos[id]);datos.alumnos[id]=a;guardarDatos();pintar();avisar("Perfil guardado");}
+    return;
+  }
+  if(f==="formUsuarioAlumno"){
+    const nombre=$("#ua_usuario").value.trim(),clave=$("#ua_clave").value,existente=datos.usuarios.find(u=>u.alumnoId===ui.alumnoId);
+    if(datos.usuarios.some(u=>u.usuario.toLowerCase()===nombre.toLowerCase()&&u!==existente)){$("#errorUsuario").textContent="Ese usuario ya existe. Elige otro.";return;}
+    if(existente){existente.usuario=nombre;if(clave){existente.sal=nuevoId();existente.hash=await hashClave(clave,existente.sal);}}
+    else{const sal=nuevoId();datos.usuarios.push({id:nuevoId(),usuario:nombre,sal,hash:await hashClave(clave,sal),rol:"alumno",alumnoId:ui.alumnoId,activo:true});}
+    ui.credenciales=clave?{usuario:nombre,clave}:null;guardarDatos();pintar();avisar(clave?"Usuario listo. Anota los datos de acceso.":"Usuario actualizado");return;
+  }
+  if(f==="formEvaluacion"){
+    const ev={id:nuevoId(),fecha:$("#ev_fecha").value,nota:$("#ev_nota").value};
+    ["peso","talla","cintura","cadera","grasa"].forEach(k=>ev[k]=numero($("#ev_"+k).value));ev.fcReposo=numero($("#ev_fc").value);ev.salto=numero($("#ev_salto").value);ev.flexibilidad=numero($("#ev_flex").value);
+    PRUEBAS.forEach(p=>ev[p.clave]=numero($("#ev_"+p.clave).value));
+    actualizarAlumno(ui.alumnoId,a=>{a.evaluaciones=[...(a.evaluaciones||[]),ev];});
+    const n=nivelDeEvaluacion(ev);avisar(n?`Evaluación guardada · nivel ${NIVEL[n.nivel]}`:"Evaluación guardada");return;
+  }
+  if(f==="formProgreso"){
+    const id=esAdmin()?ui.alumnoId:usuarioActual.alumnoId,r=leerRegistroProgreso(esAdmin()?"entrenador":"alumno");
+    if(["peso","cintura","sentadilla","pesoMuerto","press","remo"].every(k=>r[k]==null)){avisar("Anota al menos un dato.");return;}
+    actualizarAlumno(id,a=>{a.progreso=[...(a.progreso||[]),r];});avisar("Registro guardado");return;
+  }
+  if(f==="formPago"){
+    const c=config(),plan=c.planes.find(p=>p.id===$("#pg_plan").value),fecha=$("#pg_fecha").value;
+    actualizarAlumno(ui.alumnoId,a=>{
+      const m=a.membresia,inicio=m&&m.vence>=fecha?sumarDias(m.vence,1):fecha;
+      a.membresia={planId:plan.id,planNombre:plan.nombre,inicio,vence:sumarDias(inicio,plan.dias-1)};
+      a.pagos=[...(a.pagos||[]),{id:nuevoId(),fecha,monto:numero($("#pg_monto").value)||0,medio:$("#pg_medio").value,concepto:`${plan.nombre} (${fechaCorta(inicio)} – ${fechaCorta(a.membresia.vence)})`}];
+    });avisar("Pago registrado y membresía renovada");return;
+  }
+  if(f==="formAjustes"){
+    const c=config();
+    datos.config={nombre:$("#aj_nombre").value.trim()||CONFIG_INICIAL.nombre,lema:$("#aj_lema").value.trim(),entrenador:$("#aj_entrenador").value.trim(),color:$("#aj_color").value,
+      grupos:{1:$("#aj_g1").value.trim()||c.grupos[1],2:$("#aj_g2").value.trim()||c.grupos[2],3:$("#aj_g3").value.trim()||c.grupos[3]},
+      planes:c.planes.map((p,i)=>({id:p.id,nombre:$("#aj_pn"+i).value.trim()||p.nombre,dias:Math.max(1,+$("#aj_pd"+i).value||p.dias),precio:Math.max(0,+$("#aj_pp"+i).value||0)}))};
+    guardarDatos();pintar();avisar("Ajustes guardados");return;
+  }
+  if(f==="formClaveAdmin"||f==="formClaveAlumno"){
+    const pre=f==="formClaveAdmin"?"ca":"cl",u=usuarioActual;
+    if((await hashClave($(`#${pre}_actual`).value,u.sal))!==u.hash){avisar("La contraseña actual no es correcta.");return;}
+    u.sal=nuevoId();u.hash=await hashClave($(`#${pre}_nueva`).value,u.sal);guardarDatos();pintar();avisar("Contraseña cambiada");
+  }
+});
+
+document.addEventListener("input",e=>{
+  if(e.target.id==="buscarAlumno"){ui.buscar=e.target.value;const pos=e.target.selectionStart;pintar();const b=$("#buscarAlumno");b.focus();b.setSelectionRange(pos,pos);}
+  if(e.target.hasAttribute("data-prueba")){const v={};PRUEBAS.forEach(p=>v[p.clave]=numero($("#ev_"+p.clave).value));$("#cajaPuntaje").innerHTML=puntajeHtml(v);}
+});
+
+document.addEventListener("change",e=>{
+  const ref=e.target.dataset.cambiar;
+  if(ref){const[si,tipo,i]=ref.split(":");actualizarAlumno(ui.alumnoId,a=>{const s=a.plan.sesiones[+si];if(tipo==="f")s.fuerza[+i].ej=e.target.value;else if(tipo==="c")s.cardio[+i]=e.target.value;else s.core[+i]=e.target.value;});avisar("Ejercicio cambiado");}
+  if(e.target.id==="importarArchivo"&&e.target.files[0]){
+    const lector=new FileReader();
+    lector.onload=()=>{try{const d=JSON.parse(lector.result);if(!d.usuarios||!d.alumnos)throw 0;datos=d;guardarDatos();iniciarSesionGuardada();pintar();avisar("Copia restaurada");}catch(_){avisar("El archivo no es una copia válida de este sistema.");}};
+    lector.readAsText(e.target.files[0]);
+  }
+});
+
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("tr[data-abrir]"))e.target.click();});
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-ir],[data-abrir],[data-pestana],[data-semana],[data-accion],[data-asistencia],[data-ordenar],[data-marcar-hoy],[data-quitar-asistencia-hoy],[data-quitar-asistencia],[data-borrar-eval],[data-borrar-progreso],[data-borrar-pago],[data-abrir-pago],[data-entrar-demo]");
+  if(!el)return;const d=el.dataset;
+  if(d.entrarDemo){const u=datos.usuarios.find(x=>x.usuario===d.entrarDemo);if(u){try{sessionStorage.setItem(CLAVE_SESION,u.id);}catch(_){}usuarioActual=u;Object.assign(ui,{vista:u.rol==="admin"?"panel":"plan",semana:null});pintar();}return;}
+  if(d.ir){Object.assign(ui,{vista:d.ir,semana:null,confirmar:null,credenciales:null});pintar();window.scrollTo(0,0);return;}
+  if(d.abrir){Object.assign(ui,{vista:"ficha",alumnoId:d.abrir,pestana:"perfil",semana:null,confirmar:null,credenciales:null});pintar();window.scrollTo(0,0);return;}
+  if(d.abrirPago){Object.assign(ui,{vista:"ficha",alumnoId:d.abrirPago,pestana:"membresia",confirmar:null});pintar();return;}
+  if(d.pestana){Object.assign(ui,{pestana:d.pestana,semana:null,confirmar:null,credenciales:null});pintar();return;}
+  if(d.semana){ui.semana=+d.semana;pintar();return;}
+  if(d.ordenar){ui.orden=ui.orden.campo===d.ordenar?{campo:d.ordenar,dir:-ui.orden.dir}:{campo:d.ordenar,dir:1};pintar();return;}
+  if(d.asistencia){registrarAsistencia(esAdmin()?ui.alumnoId:usuarioActual.alumnoId,d.asistencia);avisar("Sesión registrada");return;}
+  if(d.marcarHoy){const a=datos.alumnos[d.marcarHoy],s=siguienteSesion(a);registrarAsistencia(d.marcarHoy,s?s.clave:"libre");avisar(`Asistencia de ${a.nombre} registrada`);return;}
+  if(d.quitarAsistenciaHoy){actualizarAlumno(d.quitarAsistenciaHoy,a=>{a.asistencias=(a.asistencias||[]).filter(x=>x.fecha!==hoy());});return;}
+  if(d.quitarAsistencia){actualizarAlumno(ui.alumnoId,a=>{a.asistencias=a.asistencias.filter(x=>x.id!==d.quitarAsistencia);});return;}
+  if(d.borrarEval){actualizarAlumno(ui.alumnoId,a=>{a.evaluaciones=a.evaluaciones.filter(x=>x.id!==d.borrarEval);});return;}
+  if(d.borrarProgreso){actualizarAlumno(ui.alumnoId,a=>{a.progreso=a.progreso.filter(x=>x.id!==d.borrarProgreso);});return;}
+  if(d.borrarPago){actualizarAlumno(ui.alumnoId,a=>{a.pagos=a.pagos.filter(x=>x.id!==d.borrarPago);});return;}
+  const accion=d.accion;
+  if(accion==="salir")cerrarSesion();
+  if(accion==="cargarDemo"||accion==="reiniciarDemo"){crearDemo().then(d=>{datos=d;guardarDatos();usuarioActual=null;try{sessionStorage.removeItem(CLAVE_SESION);}catch(_){}pintar();avisar("Demo lista. Entra con uno de los accesos de prueba.");});return;}
+  if(accion==="nuevoAlumno"){ui.vista="nuevo";pintar();}
+  if(accion==="eliminar"){ui.confirmar="eliminar";pintar();}
+  if(accion==="regenerar"){ui.confirmar="regenerar";pintar();}
+  if(accion==="cancelar"){ui.confirmar=null;pintar();}
+  if(accion==="eliminarConfirmado"){const id=ui.alumnoId;delete datos.alumnos[id];datos.usuarios=datos.usuarios.filter(u=>u.alumnoId!==id);guardarDatos();Object.assign(ui,{vista:"alumnos",alumnoId:null,confirmar:null});pintar();avisar("Alumno eliminado");}
+  if(accion==="generarPlan"){const inicio=$("#pl_inicio").value||hoy();actualizarAlumno(ui.alumnoId,a=>{const nota=a.plan?.nota||"";a.plan=generarPlan({objetivo:a.objetivo,nivel:nivelAlumno(a),dias:+a.dias||3,limitaciones:a.limitaciones||[],inicio,semilla:a.id+Date.now()});a.plan.nota=nota;});ui.confirmar=null;ui.semana=null;pintar();avisar("Plan de 8 semanas generado");}
+  if(accion==="guardarNota"){const nota=$("#pl_nota").value;actualizarAlumno(ui.alumnoId,a=>{a.plan.nota=nota;});avisar("Nota guardada");}
+  if(accion==="suspenderUsuario"||accion==="activarUsuario"){const u=datos.usuarios.find(x=>x.alumnoId===ui.alumnoId);u.activo=accion==="activarUsuario";guardarDatos();pintar();avisar(u.activo?"Acceso reactivado":"Acceso suspendido");}
+  if(accion==="exportar")descargarCopia();
+});
+
+/* =========================================================
+   11. DATOS DE DEMOSTRACIÓN (personas y cifras ficticias)
+   ========================================================= */
+async function crearDemo(){
+  const f=n=>sumarDias(hoy(),n);
+  const d={demo:true,config:{...structuredClone(CONFIG_INICIAL),entrenador:"Coach Demo"},usuarios:[],alumnos:{}};
+  const usuario=async(nombre,rol,alumnoId)=>{const sal=nuevoId();d.usuarios.push({id:nuevoId(),usuario:nombre,sal,hash:await hashClave("demo123",sal),rol,alumnoId,activo:true});};
+  await usuario("entrenador","admin");
+  const perfiles=[
+    {u:"lucia.ramos",nombre:"Lucía Ramos",edad:34,sexo:"Femenino",objetivo:"grasa",dias:3,lim:["rodilla"],ini:-56,peso:[72.4,70.9,69.6],cin:[86,83.5,81.5],t:[[28,8,50,13],[34,12,65,16],[38,14,80,18]],memb:22,plan:"mensual"},
+    {u:"diego.salas",nombre:"Diego Salas",edad:29,sexo:"Masculino",objetivo:"fuerza",dias:4,lim:[],ini:-42,peso:[78,79.1],cin:[84,83.5],t:[[42,26,95,19],[45,30,110,21]],memb:60,plan:"trimestral",marcas:true},
+    {u:"carmen.vidal",nombre:"Carmen Vidal",edad:47,sexo:"Femenino",objetivo:"recomp",dias:2,lim:["lumbar"],ini:-30,peso:[66.2,65.4],cin:[82,80],t:[[22,6,40,9],[27,9,55,12]],memb:-3,plan:"mensual"},
+    {u:"jorge.quispe",nombre:"Jorge Quispe",edad:38,sexo:"Masculino",objetivo:"acond",dias:3,lim:["hombro"],ini:-20,peso:[91.5,90.2],cin:[101,99],t:[[30,15,70,14],[33,17,80,16]],memb:5,plan:"clases12"},
+    {u:"valeria.mendoza",nombre:"Valeria Mendoza",edad:25,sexo:"Femenino",objetivo:"recomp",dias:5,lim:[],ini:-14,peso:[58.3],cin:[69],t:[[44,22,100,21]],memb:16,plan:"mensual"},
+    {u:"raul.torres",nombre:"Raúl Torres",edad:56,sexo:"Masculino",objetivo:"grasa",dias:2,lim:["rodilla","muneca"],ini:-6,peso:[88.7],cin:[104],t:[[18,4,30,7]],memb:24,plan:"mensual",sinApto:true}
+  ];
+  const cfg=d.config;
+  for(const p of perfiles){
+    const id=nuevoId(),a={id,nombre:p.nombre,edad:p.edad,sexo:p.sexo,telefono:"",objetivo:p.objetivo,dias:p.dias,nivelManual:null,limitaciones:p.lim,
+      salud:p.lim.length?"Dato de ejemplo: molestia leve reportada en la evaluación inicial.":"",aptoMedico:!p.sinApto,notasPrivadas:"",creado:f(p.ini),evaluaciones:[],progreso:[],asistencias:[],pagos:[]};
+    p.t.forEach((t,i)=>a.evaluaciones.push({id:nuevoId(),fecha:f(p.ini+i*(p.t.length>1?Math.min(28,Math.floor(-p.ini/(p.t.length-1))):0)),peso:p.peso[i],talla:p.sexo==="Femenino"?162:174,cintura:p.cin[i],cadera:null,grasa:null,fcReposo:76-i*3,
+      sentadillas:t[0],flexiones:t[1],plancha:t[2],burpees:t[3],salto:null,flexibilidad:null,nota:i?"Reevaluación":"Evaluación inicial"}));
+    const nivel=nivelAlumno(a);
+    a.plan=generarPlan({objetivo:p.objetivo,nivel,dias:p.dias,limitaciones:p.lim,inicio:f(p.ini+2),semilla:p.u});
+    if(p.u==="lucia.ramos")a.plan.nota="Vas muy bien: esta semana sube un poco el peso si terminas las series con buena técnica.";
+    // asistencias: ~ días por semana desde el inicio del plan
+    const claves=a.plan.sesiones.map(s=>s.clave);let k=0;
+    for(let dd=p.ini+2;dd<=0;dd++){const dia=new Date(f(dd)+"T12:00:00").getDay();const ok=p.dias>=5?dia>=1&&dia<=5:p.dias===4?[1,2,4,5].includes(dia):p.dias===3?[1,3,5].includes(dia):[2,4].includes(dia);
+      if(ok&&(dd*7+p.edad)%9!==0){a.asistencias.push({id:nuevoId(),fecha:f(dd),sesion:claves[k%claves.length]});k++;}}
+    // registros de progreso semanales
+    for(let w=1;w*7<-p.ini;w++){const fr=w/(-p.ini/7),pi=p.peso[0]+(p.peso[p.peso.length-1]-p.peso[0])*fr;
+      a.progreso.push({id:nuevoId(),fecha:f(p.ini+w*7),peso:Math.round(pi*10)/10,cintura:null,autor:w%2?"alumno":"entrenador",nota:"",
+        sentadilla:p.marcas?60+w*5:null,pesoMuerto:p.marcas?80+w*7.5:(p.objetivo==="grasa"?24+w*2:null),press:p.marcas?50+w*2.5:(p.objetivo!=="acond"?14+w:null),remo:p.marcas?40+w*2.5:null});}
+    // membresía y pagos
+    const plan=cfg.planes.find(x=>x.id===p.plan),vence=f(p.memb),inicio=sumarDias(vence,-(plan.dias-1));
+    a.membresia={planId:plan.id,planNombre:plan.nombre,inicio,vence};
+    a.pagos.push({id:nuevoId(),fecha:inicio,monto:plan.precio,medio:["Yape","Efectivo","Plin","Transferencia"][p.edad%4],concepto:`${plan.nombre} (${fechaCorta(inicio)} – ${fechaCorta(vence)})`});
+    if(p.ini<-35){const v2=sumarDias(inicio,-1),i2=sumarDias(v2,-(plan.dias-1));a.pagos.push({id:nuevoId(),fecha:i2,monto:plan.precio,medio:"Efectivo",concepto:`${plan.nombre} (${fechaCorta(i2)} – ${fechaCorta(v2)})`});}
+    d.alumnos[id]=a;await usuario(p.u,"alumno",id);
+  }
+  return d;
+}
+
+/* ===== Arranque ===== */
+iniciarSesionGuardada();
+pintar();
+</script>
+</body>
+</html>
