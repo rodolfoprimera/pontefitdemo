@@ -119,6 +119,18 @@ tr.clic{cursor:pointer} tr.clic:hover td{background:var(--surface-2)}
 .puntaje{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .puntaje div{background:var(--surface-2);border-radius:8px;padding:8px 10px;font-size:.82rem}
 .puntaje b{font:700 1.2rem var(--display);display:block}
+/* Fotos de progreso */
+.galeria{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,140px),1fr));gap:10px}
+.galeria figure,.comparar figure{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.foto-miniatura{all:unset;cursor:zoom-in;display:block;border-radius:8px;overflow:hidden;background:var(--surface-2)}
+.foto-miniatura:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.foto-miniatura img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.galeria figcaption,.comparar figcaption{font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between;gap:6px;align-items:center;flex-wrap:wrap}
+.comparar{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:560px}
+.grupo-fotos{display:flex;flex-direction:column;gap:8px}
+.visor{position:fixed;inset:0;background:rgba(10,6,8,.9);display:grid;place-items:center;z-index:30;padding:max(16px,env(safe-area-inset-top)) 16px;cursor:zoom-out}
+.visor img{max-width:100%;max-height:86vh;border-radius:8px;display:block}
+.visor p{color:#fff;text-align:center;margin:8px 0 0}
 .aviso-flotante{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
 [hidden]{display:none!important}
 @media (max-width:600px){h2{font-size:1.5rem}.sesion .nombre-usuario{display:none}}
@@ -563,7 +575,7 @@ function puntajeHtml(v){const n=nivelDeEvaluacion(v);return PRUEBAS.map(p=>{cons
 function fichaAlumno(){
   const a=datos.alumnos[ui.alumnoId];if(!a){ui.vista="alumnos";return moduloAlumnos();}
   const n=nivelAlumno(a),c=config(),usuario=datos.usuarios.find(u=>u.alumnoId===a.id);
-  const pestanas=[["perfil","Perfil y salud"],["acceso","Usuario"],["evaluaciones","Evaluaciones"],["plan","Plan"],["progreso","Progreso"],["membresia","Membresía"],["vista","Vista del alumno"]];
+  const pestanas=[["perfil","Perfil y salud"],["acceso","Usuario"],["evaluaciones","Evaluaciones"],["plan","Plan"],["progreso","Progreso"],["fotos","Fotos"],["membresia","Membresía"],["vista","Vista del alumno"]];
   let cuerpo="";
   if(ui.pestana==="perfil")cuerpo=formularioPerfil(a)+`<div class="fila">${ui.confirmar==="eliminar"?`<span>¿Eliminar a ${escapar(a.nombre)}, su usuario y todos sus datos? No se puede deshacer.</span><button class="boton peligro" data-accion="eliminarConfirmado">Sí, eliminar</button><button class="boton" data-accion="cancelar">Cancelar</button>`:`<button class="boton peligro chico" data-accion="eliminar">Eliminar alumno</button>`}</div>`;
   if(ui.pestana==="acceso")cuerpo=`${ui.credenciales?`<div class="aviso"><div class="etiqueta">Datos de acceso para entregar al alumno</div>Usuario: <b>${escapar(ui.credenciales.usuario)}</b> · Contraseña: <b>${escapar(ui.credenciales.clave)}</b><div class="tenue">Por seguridad no se vuelve a mostrar: anótala ahora o asigna otra después.</div></div>`:""}<form class="formulario tarjeta" id="formUsuarioAlumno"><div class="campo ancho"><h3>${usuario?"Usuario del alumno":"Crear usuario para el alumno"}</h3><span class="tenue">${usuario?"El alumno entra con este usuario y solo ve su propio plan, progreso, evaluaciones y membresía.":"Con este usuario el alumno entrará a su apartado personal. Entrégale el usuario y la contraseña en persona."}</span></div>
@@ -606,6 +618,7 @@ function fichaAlumno(){
     <div class="campo"><label class="etiqueta" for="pg_medio">Medio</label><select id="pg_medio">${["Efectivo","Yape","Plin","Transferencia","Tarjeta"].map(x=>`<option>${x}</option>`).join("")}</select></div>
     <div class="campo ancho"><button class="boton principal" type="submit">Registrar pago</button></div></form>
     <section class="tarjeta pila"><h3>Historial de pagos</h3>${(a.pagos||[]).length?`<div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Medio</th><th>Monto</th><th></th></tr></thead><tbody>${ordenarFecha(a.pagos).reverse().map(p=>`<tr><td>${fechaCorta(p.fecha)}</td><td>${escapar(p.concepto)}</td><td>${escapar(p.medio||"")}</td><td>${dinero(p.monto)}</td><td><button class="boton chico" data-borrar-pago="${p.id}">Borrar</button></td></tr>`).join("")}</tbody></table></div>`:`<p class="tenue">Sin pagos registrados.</p>`}</section>`;}
+  if(ui.pestana==="fotos")cuerpo=seccionFotos(a.id,false);
   if(ui.pestana==="vista")cuerpo=`<div class="aviso">Así ve su apartado ${escapar(a.nombre)} al entrar con su usuario.</div><div style="border:2px dashed var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:16px">${apartadoAlumno(a,"plan",true)}</div>`;
   return`<div><button class="boton chico" data-ir="alumnos">← Alumnos</button></div>
   <section><h2>${escapar(a.nombre)}</h2><div class="fila" style="margin-top:6px">${chipNivel(n)}<span class="chip">${escapar(c.grupos[n])}</span><span class="chip ${estadoMembresia(a).clase}">${estadoMembresia(a).texto}</span>${usuario?`<span class="chip">Usuario: ${escapar(usuario.usuario)}</span>`:`<span class="chip bad">Sin usuario</span>`}</div></section>
@@ -628,6 +641,7 @@ function apartadoAlumno(a,seccion,previa){
   if(seccion==="plan")cuerpo=a.plan?`${a.plan.nota?`<div class="aviso"><div class="etiqueta">Nota de tu entrenador</div>${escapar(a.plan.nota)}</div>`:""}<section class="tarjeta pila"><div class="extremos"><h3>Tu entrenamiento</h3>${selectorSemanas(sem,act)}</div>${vistaSesiones(a.plan,sem,{registrar:!previa,asistencias:a.asistencias||[]})}</section>`:`<div class="tarjeta vacio">Tu entrenador está preparando tu plan. Aparecerá aquí apenas esté listo.</div>`;
   if(seccion==="progreso")cuerpo=`${previa?"":formularioProgreso()}<section class="tarjeta pila"><h3>Tu evolución</h3>${comparativaEvaluaciones(ev)}${graficosProgreso(a)}</section><section class="tarjeta pila"><h3>Tus registros</h3>${tablaProgreso(a,false)}</section>`;
   if(seccion==="evaluaciones")cuerpo=`<section class="tarjeta pila"><h3>Tus evaluaciones</h3>${tablaEvaluaciones(ev,false)}</section>`;
+  if(seccion==="fotos")cuerpo=previa?`<div class="tarjeta vacio">Las fotos del alumno están en la pestaña Fotos.</div>`:seccionFotos(a.id,true);
   if(seccion==="cuenta")cuerpo=`<section class="tarjeta pila"><h3>Tu membresía</h3><span class="chip ${m.clase}">${m.texto}</span>${a.membresia?`<span class="tenue">${escapar(a.membresia.planNombre)} · ${fechaCorta(a.membresia.inicio)} al ${fechaCorta(a.membresia.vence)}</span>`:""}</section>
     <form class="formulario tarjeta" id="formClaveAlumno"><div class="campo ancho"><h3>Cambiar contraseña</h3></div><div class="campo"><label class="etiqueta" for="cl_actual">Contraseña actual</label><input id="cl_actual" type="password" required autocomplete="current-password"></div><div class="campo"><label class="etiqueta" for="cl_nueva">Nueva contraseña</label><input id="cl_nueva" type="password" required minlength="6" autocomplete="new-password"></div><div class="campo ancho"><button class="boton principal" type="submit">Cambiar contraseña</button></div></form>`;
   return`<section><div class="etiqueta">${escapar(c.nombre)}</div><h2>Hola, ${escapar(a.nombre.split(" ")[0])}</h2><div class="tenue">${escapar(OBJETIVO[a.objetivo]||"")}${c.entrenador?` · Entrenador: ${escapar(c.entrenador)}`:""}</div></section>
@@ -649,7 +663,7 @@ function pintar(){
   if(!usuarioActual){raiz.innerHTML=pantallaIngreso();return;}
   const c=config();
   const menu=esAdmin()?[["panel","Panel"],["alumnos","Alumnos"],["avance","Avance"],["asistencia","Asistencia"],["pagos","Pagos"],["ajustes","Ajustes"]]
-    :[["plan","Mi plan"],["progreso","Mi progreso"],["evaluaciones","Evaluaciones"],["cuenta","Mi cuenta"]];
+    :[["plan","Mi plan"],["progreso","Mi progreso"],["fotos","Mis fotos"],["evaluaciones","Evaluaciones"],["cuenta","Mi cuenta"]];
   const activa=ui.vista==="ficha"||ui.vista==="nuevo"?"alumnos":ui.vista;
   let contenido="";
   if(esAdmin()){
@@ -663,6 +677,7 @@ function pintar(){
   <div class="sesion"><span class="nombre-usuario tenue">${escapar(usuarioActual.usuario)}</span><button class="boton chico" data-accion="salir">Salir</button></div></div>
   <nav class="menu" aria-label="Navegación principal"><div class="contenedor">${menu.map(([k,v])=>`<button class="pestana" data-ir="${k}" aria-current="${activa===k}">${v}</button>`).join("")}</div></nav></header>
   <main class="contenedor">${datos.demo?`<div class="aviso">Estás viendo una <b>demo con datos de ejemplo</b>. Las personas y cifras son ficticias.</div>`:""}${contenido}</main>`;
+  pintarGaleria();
 }
 
 /* =========================================================
@@ -678,12 +693,115 @@ function leerRegistroProgreso(autor){
   return r;
 }
 async function descargarCopia(){
-  const nombre=`copia-gimnasio-${hoy()}.json`,texto=JSON.stringify(datos,null,2);
+  // La copia incluye las fotos de progreso para no perderlas
+  let fotos=[];try{fotos=await Promise.all((await todasLasFotos()).map(async({blob,...meta})=>({...meta,data:await blobADataUrl(blob)})));}catch(_){}
+  const nombre=`copia-gimnasio-${hoy()}.json`,texto=JSON.stringify({...datos,fotos});
   // Dentro de claude.ai la descarga pasa por el permiso del visor; en un archivo local se usa un enlace normal
   const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
   if(dl){try{await dl.save({filename:nombre,data:new Blob([texto],{type:"application/json"})});}catch(_){avisar("La descarga se canceló.");}return;}
-  const blob=new Blob([JSON.stringify(datos,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  const blob=new Blob([texto],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
   a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* =========================================================
+   12. FOTOS DE PROGRESO (IndexedDB: se guardan en este navegador)
+   ========================================================= */
+const ANGULOS={frente:"Frente",perfil:"Perfil",espalda:"Espalda",libre:"Libre"};
+let promesaBdFotos=null;
+function abrirBdFotos(){
+  if(promesaBdFotos)return promesaBdFotos;
+  promesaBdFotos=new Promise((ok,mal)=>{
+    if(!window.indexedDB)return mal(new Error("Este navegador no guarda fotos"));
+    const r=indexedDB.open("pontefit-fotos",1);
+    r.onupgradeneeded=()=>{r.result.createObjectStore("fotos",{keyPath:"id"}).createIndex("alumnoId","alumnoId");};
+    r.onsuccess=()=>ok(r.result);r.onerror=()=>mal(r.error);
+  });
+  promesaBdFotos.catch(()=>{promesaBdFotos=null;});
+  return promesaBdFotos;
+}
+async function operacionFotos(modo,fn){
+  const db=await abrirBdFotos();
+  return new Promise((ok,mal)=>{const tx=db.transaction("fotos",modo);let res;const req=fn(tx.objectStore("fotos"));if(req)req.onsuccess=()=>{res=req.result;};
+    tx.oncomplete=()=>ok(res);tx.onerror=()=>mal(tx.error);tx.onabort=()=>mal(tx.error);});
+}
+const fotosDeAlumno=id=>operacionFotos("readonly",st=>st.index("alumnoId").getAll(id));
+const guardarFoto=f=>operacionFotos("readwrite",st=>st.put(f));
+const borrarFoto=id=>{const u=urlsFotos.get(id);if(u){URL.revokeObjectURL(u);urlsFotos.delete(id);}return operacionFotos("readwrite",st=>st.delete(id));};
+const todasLasFotos=()=>operacionFotos("readonly",st=>st.getAll());
+const vaciarFotos=()=>operacionFotos("readwrite",st=>st.clear()).catch(()=>{});
+async function borrarFotosDeAlumno(id){try{for(const f of await fotosDeAlumno(id))await borrarFoto(f.id);}catch(_){}}
+const urlsFotos=new Map();
+function urlFoto(f){if(!urlsFotos.has(f.id))urlsFotos.set(f.id,URL.createObjectURL(f.blob));return urlsFotos.get(f.id);}
+// Reduce la foto a 1080 px de lado mayor en JPEG para que ocupe poco (~150 KB)
+async function comprimirImagen(archivo,lado=1080){
+  const url=URL.createObjectURL(archivo);
+  try{
+    const img=await new Promise((ok,mal)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>mal(new Error("No se pudo leer la imagen"));i.src=url;});
+    const k=Math.min(1,lado/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement("canvas");
+    c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    return await new Promise((ok,mal)=>c.toBlob(b=>b?ok(b):mal(new Error("No se pudo comprimir")),"image/jpeg",0.8));
+  }finally{URL.revokeObjectURL(url);}
+}
+const blobADataUrl=b=>new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.readAsDataURL(b);});
+const dataUrlABlob=async u=>(await fetch(u)).blob();
+
+function seccionFotos(alumnoId,esAlumno){
+  return`<section class="tarjeta pila"><div><h3>${esAlumno?"Mis fotos de progreso":"Fotos de progreso"}</h3>
+  <span class="tenue">Para comparar bien: misma luz, misma ropa, misma distancia y cada 2 a 4 semanas. Solo las ven ${esAlumno?"tú y tu entrenador":"el alumno y tú"}.</span></div>
+  <form class="formulario" id="formFoto" onsubmit="return false">
+    <div class="campo"><label class="etiqueta" for="ft_angulo">Ángulo</label><select id="ft_angulo">${Object.entries(ANGULOS).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select></div>
+    <div class="campo"><label class="etiqueta" for="ft_fecha">Fecha</label><input id="ft_fecha" type="date" value="${hoy()}" max="${hoy()}"></div>
+    <div class="campo ancho"><div class="fila">
+      <label class="boton principal" for="ft_camara">Tomar foto</label><input id="ft_camara" type="file" accept="image/*" capture="${esAlumno?"user":"environment"}" hidden data-subir-foto="${alumnoId}">
+      <label class="boton" for="ft_galeria">Elegir de la galería</label><input id="ft_galeria" type="file" accept="image/*" multiple hidden data-subir-foto="${alumnoId}">
+    </div></div>
+  </form>
+  <div id="galeriaFotos" data-alumno="${alumnoId}"><p class="tenue">Cargando fotos…</p></div></section>`;
+}
+async function pintarGaleria(){
+  const cont=$("#galeriaFotos");if(!cont)return;
+  let fotos;
+  try{fotos=await fotosDeAlumno(cont.dataset.alumno);}
+  catch(_){cont.innerHTML=`<p class="tenue">Este navegador no permite guardar fotos (por ejemplo, en modo privado). Ábrelo en una ventana normal.</p>`;return;}
+  if(!cont.isConnected)return;
+  if(!fotos.length){cont.innerHTML=`<div class="vacio">Aún no hay fotos. Pulsa <b>Tomar foto</b> para la primera.</div>`;return;}
+  fotos.sort((a,b)=>a.fecha<b.fecha?1:a.fecha>b.fecha?-1:b.creado-a.creado);
+  // Comparación antes / después por ángulo
+  const fechasPorAngulo=k=>[...new Set(fotos.filter(f=>f.angulo===k).map(f=>f.fecha))].sort();
+  const angulosComparables=Object.keys(ANGULOS).filter(k=>fechasPorAngulo(k).length>=2);
+  let comparacion=`<p class="tenue" style="margin:0">Cuando tengas fotos del mismo ángulo en dos fechas distintas, aquí podrás compararlas lado a lado.</p>`;
+  if(angulosComparables.length){
+    const ang=angulosComparables.includes(ui.compAngulo)?ui.compAngulo:angulosComparables[0],fechas=fechasPorAngulo(ang);
+    const antes=fechas.includes(ui.compAntes)?ui.compAntes:fechas[0],despues=fechas.includes(ui.compDespues)?ui.compDespues:fechas[fechas.length-1];
+    const foto=fe=>fotos.find(f=>f.angulo===ang&&f.fecha===fe);
+    const opciones=sel=>fechas.map(fe=>`<option value="${fe}" ${fe===sel?"selected":""}>${fechaCorta(fe)}</option>`).join("");
+    comparacion=`<div class="grupo-fotos"><div class="extremos"><h3>Antes y después</h3><span class="tenue">${Math.abs(diasEntre(antes,despues))} días de diferencia</span></div>
+    <div class="fila"><select id="comp_angulo" aria-label="Ángulo a comparar" style="width:auto">${angulosComparables.map(k=>`<option value="${k}" ${k===ang?"selected":""}>${ANGULOS[k]}</option>`).join("")}</select>
+    <select id="comp_antes" aria-label="Fecha de antes" style="width:auto">${opciones(antes)}</select><span class="tenue">vs</span><select id="comp_despues" aria-label="Fecha de después" style="width:auto">${opciones(despues)}</select></div>
+    <div class="comparar">${[["Antes",foto(antes),antes],["Después",foto(despues),despues]].map(([t,f,fe])=>`<figure><button class="foto-miniatura" data-ver-foto="${f.id}" aria-label="Ampliar foto ${t.toLowerCase()}"><img src="${urlFoto(f)}" alt="${t}: ${ANGULOS[ang]} del ${fechaCorta(fe)}"></button><figcaption><b>${t}</b><span>${fechaCorta(fe)}</span></figcaption></figure>`).join("")}</div></div>`;
+  }
+  // Galería agrupada por fecha
+  const porFecha={};fotos.forEach(f=>(porFecha[f.fecha]=porFecha[f.fecha]||[]).push(f));
+  const galeria=Object.entries(porFecha).map(([fe,lista])=>`<div class="grupo-fotos"><div class="etiqueta">${fechaCorta(fe)} · ${lista.length} foto${lista.length>1?"s":""}</div><div class="galeria">${lista.map(f=>`<figure><button class="foto-miniatura" data-ver-foto="${f.id}" aria-label="Ampliar foto ${ANGULOS[f.angulo]} del ${fechaCorta(f.fecha)}"><img src="${urlFoto(f)}" alt="${ANGULOS[f.angulo]} del ${fechaCorta(f.fecha)}" loading="lazy"></button>
+    <figcaption><span>${ANGULOS[f.angulo]}${f.autor==="entrenador"?" · entrenador":""}</span>${ui.confirmarFoto===f.id?`<span class="fila" style="gap:4px"><button class="boton chico peligro" data-borrar-foto-ok="${f.id}">Borrar</button><button class="boton chico" data-cancelar-foto>No</button></span>`:`<button class="boton chico" data-borrar-foto="${f.id}" aria-label="Borrar foto">Borrar</button>`}</figcaption></figure>`).join("")}</div></div>`).join("");
+  cont.innerHTML=`<div class="pila" style="display:flex;flex-direction:column;gap:18px">${comparacion}${galeria}</div>`;
+}
+async function subirFotos(alumnoId,archivos){
+  const angulo=$("#ft_angulo")?.value||"frente",fecha=$("#ft_fecha")?.value||hoy();let n=0;
+  avisar("Guardando foto…");
+  for(const archivo of archivos){
+    if(!archivo.type.startsWith("image/"))continue;
+    try{const blob=await comprimirImagen(archivo);await guardarFoto({id:nuevoId(),alumnoId,fecha,angulo,blob,creado:Date.now(),autor:esAdmin()?"entrenador":"alumno"});n++;}
+    catch(e){avisar(e&&e.name==="QuotaExceededError"?"No hay espacio en el navegador para más fotos.":"No se pudo guardar una de las fotos. Prueba con otra imagen.");}
+  }
+  if(n){Object.assign(ui,{compAngulo:angulo,compDespues:fecha});pintarGaleria();avisar(n>1?`${n} fotos guardadas`:"Foto guardada");}
+}
+function abrirVisor(id){
+  fotosDeAlumno($("#galeriaFotos").dataset.alumno).then(fs=>{const f=fs.find(x=>x.id===id);if(!f)return;
+    const v=document.createElement("div");v.className="visor";v.setAttribute("role","dialog");v.setAttribute("aria-label","Foto ampliada");v.tabIndex=-1;
+    v.innerHTML=`<div><img src="${urlFoto(f)}" alt="${ANGULOS[f.angulo]} del ${fechaCorta(f.fecha)}"><p>${ANGULOS[f.angulo]} · ${fechaCorta(f.fecha)} · toca para cerrar</p></div>`;
+    const cerrar=()=>{v.remove();document.removeEventListener("keydown",esc);};const esc=e=>{if(e.key==="Escape")cerrar();};
+    v.addEventListener("click",cerrar);document.addEventListener("keydown",esc);document.body.appendChild(v);v.focus();});
 }
 
 document.addEventListener("submit",async e=>{
@@ -757,18 +875,27 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",e=>{
   const ref=e.target.dataset.cambiar;
   if(ref){const[si,tipo,i]=ref.split(":");actualizarAlumno(ui.alumnoId,a=>{const s=a.plan.sesiones[+si];if(tipo==="f")s.fuerza[+i].ej=e.target.value;else if(tipo==="c")s.cardio[+i]=e.target.value;else s.core[+i]=e.target.value;});avisar("Ejercicio cambiado");}
+  if(e.target.dataset.subirFoto&&e.target.files.length){subirFotos(e.target.dataset.subirFoto,[...e.target.files]);e.target.value="";return;}
+  if(["comp_angulo","comp_antes","comp_despues"].includes(e.target.id)){const k={comp_angulo:"compAngulo",comp_antes:"compAntes",comp_despues:"compDespues"}[e.target.id];ui[k]=e.target.value;if(k==="compAngulo"){ui.compAntes=null;ui.compDespues=null;}pintarGaleria();return;}
   if(e.target.id==="importarArchivo"&&e.target.files[0]){
     const lector=new FileReader();
-    lector.onload=()=>{try{const d=JSON.parse(lector.result);if(!d.usuarios||!d.alumnos)throw 0;datos=d;guardarDatos();iniciarSesionGuardada();pintar();avisar("Copia restaurada");}catch(_){avisar("El archivo no es una copia válida de este sistema.");}};
+    lector.onload=async()=>{try{const d=JSON.parse(lector.result);if(!d.usuarios||!d.alumnos)throw 0;
+      const fotos=d.fotos||[];delete d.fotos;datos=d;guardarDatos();
+      if(fotos.length){await vaciarFotos();for(const f of fotos){const{data,...meta}=f;await guardarFoto({...meta,blob:await dataUrlABlob(data)});}}
+      iniciarSesionGuardada();pintar();avisar("Copia restaurada");}catch(_){avisar("El archivo no es una copia válida de este sistema.");}};
     lector.readAsText(e.target.files[0]);
   }
 });
 
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("tr[data-abrir]"))e.target.click();});
 document.addEventListener("click",e=>{
-  const el=e.target.closest("[data-ir],[data-abrir],[data-pestana],[data-semana],[data-accion],[data-asistencia],[data-ordenar],[data-marcar-hoy],[data-quitar-asistencia-hoy],[data-quitar-asistencia],[data-borrar-eval],[data-borrar-progreso],[data-borrar-pago],[data-abrir-pago],[data-entrar-demo]");
+  const el=e.target.closest("[data-ir],[data-abrir],[data-pestana],[data-semana],[data-accion],[data-asistencia],[data-ordenar],[data-marcar-hoy],[data-quitar-asistencia-hoy],[data-quitar-asistencia],[data-borrar-eval],[data-borrar-progreso],[data-borrar-pago],[data-abrir-pago],[data-entrar-demo],[data-ver-foto],[data-borrar-foto],[data-borrar-foto-ok],[data-cancelar-foto]");
   if(!el)return;const d=el.dataset;
   if(d.entrarDemo){const u=datos.usuarios.find(x=>x.usuario===d.entrarDemo);if(u){try{sessionStorage.setItem(CLAVE_SESION,u.id);}catch(_){}usuarioActual=u;Object.assign(ui,{vista:u.rol==="admin"?"panel":"plan",semana:null});pintar();}return;}
+  if(d.verFoto){abrirVisor(d.verFoto);return;}
+  if(d.borrarFoto){ui.confirmarFoto=d.borrarFoto;pintarGaleria();return;}
+  if(d.cancelarFoto!==undefined){ui.confirmarFoto=null;pintarGaleria();return;}
+  if(d.borrarFotoOk){borrarFoto(d.borrarFotoOk).then(()=>{ui.confirmarFoto=null;pintarGaleria();avisar("Foto borrada");});return;}
   if(d.ir){Object.assign(ui,{vista:d.ir,semana:null,confirmar:null,credenciales:null});pintar();window.scrollTo(0,0);return;}
   if(d.abrir){Object.assign(ui,{vista:"ficha",alumnoId:d.abrir,pestana:"perfil",semana:null,confirmar:null,credenciales:null});pintar();window.scrollTo(0,0);return;}
   if(d.abrirPago){Object.assign(ui,{vista:"ficha",alumnoId:d.abrirPago,pestana:"membresia",confirmar:null});pintar();return;}
@@ -784,12 +911,12 @@ document.addEventListener("click",e=>{
   if(d.borrarPago){actualizarAlumno(ui.alumnoId,a=>{a.pagos=a.pagos.filter(x=>x.id!==d.borrarPago);});return;}
   const accion=d.accion;
   if(accion==="salir")cerrarSesion();
-  if(accion==="cargarDemo"||accion==="reiniciarDemo"){crearDemo().then(d=>{datos=d;guardarDatos();usuarioActual=null;try{sessionStorage.removeItem(CLAVE_SESION);}catch(_){}pintar();avisar("Demo lista. Entra con uno de los accesos de prueba.");});return;}
+  if(accion==="cargarDemo"||accion==="reiniciarDemo"){vaciarFotos().then(crearDemo).then(d=>{datos=d;guardarDatos();usuarioActual=null;try{sessionStorage.removeItem(CLAVE_SESION);}catch(_){}pintar();avisar("Demo lista. Entra con uno de los accesos de prueba.");});return;}
   if(accion==="nuevoAlumno"){ui.vista="nuevo";pintar();}
   if(accion==="eliminar"){ui.confirmar="eliminar";pintar();}
   if(accion==="regenerar"){ui.confirmar="regenerar";pintar();}
   if(accion==="cancelar"){ui.confirmar=null;pintar();}
-  if(accion==="eliminarConfirmado"){const id=ui.alumnoId;delete datos.alumnos[id];datos.usuarios=datos.usuarios.filter(u=>u.alumnoId!==id);guardarDatos();Object.assign(ui,{vista:"alumnos",alumnoId:null,confirmar:null});pintar();avisar("Alumno eliminado");}
+  if(accion==="eliminarConfirmado"){const id=ui.alumnoId;borrarFotosDeAlumno(id);delete datos.alumnos[id];datos.usuarios=datos.usuarios.filter(u=>u.alumnoId!==id);guardarDatos();Object.assign(ui,{vista:"alumnos",alumnoId:null,confirmar:null});pintar();avisar("Alumno eliminado");}
   if(accion==="generarPlan"){const inicio=$("#pl_inicio").value||hoy();actualizarAlumno(ui.alumnoId,a=>{const nota=a.plan?.nota||"";a.plan=generarPlan({objetivo:a.objetivo,nivel:nivelAlumno(a),dias:+a.dias||3,limitaciones:a.limitaciones||[],inicio,semilla:a.id+Date.now()});a.plan.nota=nota;});ui.confirmar=null;ui.semana=null;pintar();avisar("Plan de 8 semanas generado");}
   if(accion==="guardarNota"){const nota=$("#pl_nota").value;actualizarAlumno(ui.alumnoId,a=>{a.plan.nota=nota;});avisar("Nota guardada");}
   if(accion==="suspenderUsuario"||accion==="activarUsuario"){const u=datos.usuarios.find(x=>x.alumnoId===ui.alumnoId);u.activo=accion==="activarUsuario";guardarDatos();pintar();avisar(u.activo?"Acceso reactivado":"Acceso suspendido");}
