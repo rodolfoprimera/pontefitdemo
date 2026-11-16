@@ -138,7 +138,8 @@ tr.clic{cursor:pointer} tr.clic:hover td{background:var(--surface-2)}
 </style>
 </head>
 <body>
-<div id="raiz"></div>
+<div id="raiz"><main class="acceso"><p class="tenue">Cargando PonteFit…</p></main></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <div class="aviso-flotante" id="avisoFlotante" role="status" hidden></div>
 
 <script>
@@ -298,19 +299,22 @@ async function hashClave(clave,sal){
    ========================================================= */
 const CLAVE_DATOS="gimnasioFuncional.datos.v1";
 const CLAVE_SESION="gimnasioFuncional.sesion";
+/* ---- Conexión a Supabase (la clave pública puede ir en la página; nunca pongas aquí la service_role) ---- */
+const SUPABASE_URL="https://snbkpeypokqbqsaurops.supabase.co";
+const SUPABASE_KEY="sb_publishable_q7b4Mu4v8gClpC0CGpfSvA_mFrAchpx";
+const DOMINIO_USUARIOS="usuarios.pontefit.app"; // los usuarios se convierten en correos internos: lucia.ramos@usuarios.pontefit.app
+const nubeConfigurada=!SUPABASE_URL.startsWith("__")&&!!window.supabase;
+const nube=nubeConfigurada?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+// Segundo cliente sin sesión guardada: crea usuarios de alumnos sin cerrar la sesión del entrenador
+const creadorUsuarios=nubeConfigurada?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:"pontefit-creador"}}):null;
+const correoDe=u=>`${String(u).trim().toLowerCase()}@${DOMINIO_USUARIOS}`;
+const estadoNube={listo:false,hayAdmin:false,error:null};
 const LOGO="data:image/jpeg;base64,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91e2TzXRVqqmtdz834W4PxnEFb92uWkvim9vRd35fed18bv2l73xO1z4W8AXE1lopzHcakuUmvB0ITvHGfX7zew4Pzh0GB0oorz5zc3dn9NZHkODyXDrDYONl1fVvu3/AEl0CiiioPZCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigArr/AIefEnxR8NPE66v4dvMIxAubKXJhulH8Lr6+jDkfmDyFFNNp3RzYzB0MZRlQxEFKEt0z9JPhf8XPC/xU0A3WkTG31CFQbvTJmHmwH1/2kz0cceuDxXxX+0RpQ0j9pTxPEoAS4ljvFx/00iVj/wCPbq4DQte1jwz4gttc0DUJ7DULZt0U8LYI9QexB6EHg966D4k+P7n4k+KrXxJqFhFaagLGK1u/JP7uWRC37xR1UEEfLzjHWt6lb2kLPc/PeH+CqnD+dyxGFfNh5xa13i7ppPutNH9/d9R+zVpS6r+0poBddyWYmvGH+5EwB/76Za+xvir8YfDHwq0ETalKLvVZkJtNLhYeZL/tN/cTPVj+AJ4r4U+GnxDu/hn4g1HX9LsYrnU5rB7O1ebmOBndCZGX+LAXgccnniuZ1nWtW8Q65c6zrmoT39/ctvluJ23Mx/oB0AHAHSiFbkhZbiz3gmef539Zxbth4RiklvJ6tryWur37dzc8ffEPxP8AEjxQ+teJL0yEZW3tY8rDaof4Y17e5PJ7muVoorBtt3Z+iYTCUcJSjQw8VGEdElsFFFFI6AooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//2Q==";
 const CONFIG_INICIAL={nombre:"PonteFit",lema:"Entrenamiento funcional · cardio y fuerza",entrenador:"",color:"#e90137",
   grupos:{1:"Grupo Base",2:"Grupo Intermedio",3:"Grupo Avanzado"},
   planes:[{id:"mensual",nombre:"Mensual",dias:30,precio:150},{id:"trimestral",nombre:"Trimestral",dias:90,precio:400},{id:"clases12",nombre:"Paquete 12 clases",dias:45,precio:180}]};
-let datos=cargarDatos();
-function cargarDatos(){
-  try{const d=JSON.parse(localStorage.getItem(CLAVE_DATOS));if(d&&d.usuarios){d.config=d.config||{};if(!d.config.nombre||d.config.nombre==="Mi Gimnasio Funcional")d.config.nombre="PonteFit";if(!d.config.color||d.config.color==="#e4572e")d.config.color="#e90137";return d;}}catch(_){}
-  return{config:structuredClone(CONFIG_INICIAL),usuarios:[],alumnos:{}};
-}
-function guardarDatos(){
-  try{localStorage.setItem(CLAVE_DATOS,JSON.stringify(datos));}
-  catch(_){avisar("No se pudo guardar: el almacenamiento del navegador está lleno o bloqueado.");}
-}
+let datos={config:{},usuarios:[],alumnos:{},demo:false};
+function guardarDatos(){} // en la versión en la nube cada cambio se guarda en su tabla (ver sección 13)
 const config=()=>Object.assign({},CONFIG_INICIAL,datos.config,{grupos:Object.assign({},CONFIG_INICIAL.grupos,datos.config?.grupos)});
 
 // Consultas sobre alumnos
@@ -342,11 +346,8 @@ function resumenAvance(a){
    ========================================================= */
 const ui={vista:"panel",alumnoId:null,pestana:"perfil",semana:null,buscar:"",confirmar:null,orden:{campo:"nombre",dir:1},vistaPrevia:false};
 let usuarioActual=null;
-function iniciarSesionGuardada(){
-  let id=null;try{id=sessionStorage.getItem(CLAVE_SESION);}catch(_){}
-  usuarioActual=datos.usuarios.find(u=>u.id===id)||null;
-}
-function cerrarSesion(){ui.credenciales=null;$("#avisoFlotante").hidden=true;try{sessionStorage.removeItem(CLAVE_SESION);}catch(_){}usuarioActual=null;Object.assign(ui,{vista:"panel",alumnoId:null});pintar();}
+function iniciarSesionGuardada(){}
+async function cerrarSesion(){ui.credenciales=null;$("#avisoFlotante").hidden=true;try{await nube.auth.signOut();}catch(_){}usuarioActual=null;datos.alumnos={};datos.usuarios=[];Object.assign(ui,{vista:"panel",alumnoId:null});pintar();}
 const esAdmin=()=>usuarioActual&&usuarioActual.rol==="admin";
 const alumnoDelUsuario=()=>usuarioActual&&datos.alumnos[usuarioActual.alumnoId];
 
@@ -445,14 +446,14 @@ function pantallaConfiguracionInicial(){
   <div class="campo"><label class="etiqueta" for="ini_clave">Contraseña</label><input id="ini_clave" type="password" required minlength="6" autocomplete="new-password"></div>
   <div class="campo"><label class="etiqueta" for="ini_clave2">Repite la contraseña</label><input id="ini_clave2" type="password" required minlength="6" autocomplete="new-password"></div>
   <div class="error" id="errorAcceso"></div><button class="boton principal" type="submit">Crear y entrar</button>
-  <div class="bloque"><span class="tenue">¿Solo quieres ver cómo funciona?</span><button class="boton" type="button" data-accion="cargarDemo">Abrir demo con datos de ejemplo</button></div></form></main>`;
+  <p class="tenue" style="margin:0;font-size:.85rem">Después podrás cargar alumnos de ejemplo desde el Panel para mostrar la demo.</p></form></main>`;
 }
 function pantallaIngreso(){
   const c=config();
   return`<main class="acceso"><form class="tarjeta" id="formIngreso"><div class="logo-grande"><img src="${LOGO}" alt="Logo de ${escapar(c.nombre)}"></div><div class="bienvenida"><h1>${escapar(c.nombre)}</h1><span class="tenue">${escapar(c.lema)}</span></div>
-  <div class="campo"><label class="etiqueta" for="ing_usuario">Usuario</label><input id="ing_usuario" required autocomplete="username" autofocus></div>
-  <div class="campo"><label class="etiqueta" for="ing_clave">Contraseña</label><input id="ing_clave" type="password" required autocomplete="current-password"></div>
-  <div class="error" id="errorAcceso"></div><button class="boton principal" type="submit">Entrar</button>${datos.demo?`<div class="aviso"><div class="etiqueta">Demo · accesos de prueba</div><div>Entrenador: <b>entrenador</b> / <b>demo123</b></div><div>Alumna: <b>lucia.ramos</b> / <b>demo123</b></div><div class="tenue">Todos los alumnos de ejemplo usan la contraseña demo123.</div><div class="fila" style="margin-top:6px"><button class="boton chico" type="button" data-entrar-demo="entrenador">Entrar como entrenador</button><button class="boton chico" type="button" data-entrar-demo="lucia.ramos">Entrar como alumna</button><button class="boton chico" type="button" data-accion="reiniciarDemo">Reiniciar demo</button></div></div>`:""}
+  <div class="campo"><label class="etiqueta" for="ing_usuario">Usuario</label><input id="ing_usuario" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus></div>
+  <div class="campo"><label class="etiqueta" for="ing_clave">Contraseña</label><input id="ing_clave" type="password" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+  <div class="error" id="errorAcceso"></div><button class="boton principal" type="submit">Entrar</button>${datos.demo?`<div class="aviso"><div class="etiqueta">Demo · acceso de alumno de prueba</div><div>Alumna: <b>lucia.ramos</b> / <b>demo123</b></div><div class="tenue">Todos los alumnos de ejemplo usan la contraseña demo123.</div><div class="fila" style="margin-top:6px"><button class="boton chico" type="button" data-entrar-demo="lucia.ramos">Entrar como alumna</button></div></div>`:""}
   <p class="tenue" style="margin:0;font-size:.85rem">¿Olvidaste tu contraseña? Pídele al entrenador que te asigne una nueva.</p></form></main>`;
 }
 
@@ -477,7 +478,7 @@ function moduloPanel(){
     ${bloqueAlerta("Evaluación pendiente","Sin evaluar o hace 4+ semanas",pend,a=>{const u=ultimaEvaluacion(a);return u?`Última: ${fechaCorta(u.fecha)}`:"Nunca";})}
     ${bloqueAlerta("Membresías","Vencidas o por vencer",venc,a=>estadoMembresia(a).texto)}
     ${bloqueAlerta("Sin actividad","Nada registrado en 14 días",inactivos,a=>{const r=resumenAvance(a);return r.actividad?`Última: ${fechaCorta(r.actividad)}`:"Sin registros";})}
-  </section>`:`<div class="tarjeta vacio">Aún no hay alumnos. Ve a <b>Alumnos</b> y registra al primero.</div>`}`;
+  </section>`:`<div class="tarjeta vacio pila" style="align-items:center">Aún no hay alumnos. Ve a <b>Alumnos</b> y registra al primero, o carga 6 alumnos de ejemplo para la demo.<button class="boton principal" data-accion="cargarEjemplos" ${ui.cargandoEjemplos?"disabled":""}>${ui.cargandoEjemplos?"Cargando alumnos de ejemplo…":"Cargar alumnos de ejemplo"}</button></div>`}`;
 }
 function bloqueAlerta(titulo,sub,lista,detalle){
   return`<article class="tarjeta pila"><div><h3>${titulo}</h3><span class="tenue">${sub}</span></div>${lista.length?lista.slice(0,8).map(a=>`<div class="extremos"><button class="boton chico" data-abrir="${a.id}">${escapar(a.nombre)}</button><span class="tenue">${detalle(a)}</span></div>`).join("")+(lista.length>8?`<span class="tenue">y ${lista.length-8} más</span>`:""):`<span class="chip ok">Todo al día</span>`}</article>`;
@@ -541,8 +542,8 @@ function moduloAjustes(){
   <div class="campo"><label class="etiqueta" for="ca_actual">Contraseña actual</label><input id="ca_actual" type="password" required autocomplete="current-password"></div>
   <div class="campo"><label class="etiqueta" for="ca_nueva">Nueva contraseña</label><input id="ca_nueva" type="password" required minlength="6" autocomplete="new-password"></div>
   <div class="campo ancho"><button class="boton" type="submit">Cambiar contraseña</button></div></form>
-  <section class="tarjeta pila"><h3>Copia de seguridad</h3><p class="tenue" style="margin:0">Los datos se guardan solo en este navegador. Descarga una copia con frecuencia; también sirve para pasar los datos a otro equipo.</p>
-  <div class="fila"><button class="boton principal" data-accion="exportar">Descargar copia (.json)</button><label class="boton" for="importarArchivo">Restaurar copia</label><input id="importarArchivo" type="file" accept="application/json,.json" hidden></div></section>`;
+  <section class="tarjeta pila"><h3>Copia de seguridad</h3><p class="tenue" style="margin:0">Los datos se guardan en la nube (Supabase) y se ven desde cualquier dispositivo. Igual puedes descargar una copia de las fichas cuando quieras.</p>
+  <div class="fila"><button class="boton principal" data-accion="exportar">Descargar copia (.json)</button></div></section>`;
 }
 
 /* ===== Ficha del alumno (vista del administrador) ===== */
@@ -579,8 +580,8 @@ function fichaAlumno(){
   let cuerpo="";
   if(ui.pestana==="perfil")cuerpo=formularioPerfil(a)+`<div class="fila">${ui.confirmar==="eliminar"?`<span>¿Eliminar a ${escapar(a.nombre)}, su usuario y todos sus datos? No se puede deshacer.</span><button class="boton peligro" data-accion="eliminarConfirmado">Sí, eliminar</button><button class="boton" data-accion="cancelar">Cancelar</button>`:`<button class="boton peligro chico" data-accion="eliminar">Eliminar alumno</button>`}</div>`;
   if(ui.pestana==="acceso")cuerpo=`${ui.credenciales?`<div class="aviso"><div class="etiqueta">Datos de acceso para entregar al alumno</div>Usuario: <b>${escapar(ui.credenciales.usuario)}</b> · Contraseña: <b>${escapar(ui.credenciales.clave)}</b><div class="tenue">Por seguridad no se vuelve a mostrar: anótala ahora o asigna otra después.</div></div>`:""}<form class="formulario tarjeta" id="formUsuarioAlumno"><div class="campo ancho"><h3>${usuario?"Usuario del alumno":"Crear usuario para el alumno"}</h3><span class="tenue">${usuario?"El alumno entra con este usuario y solo ve su propio plan, progreso, evaluaciones y membresía.":"Con este usuario el alumno entrará a su apartado personal. Entrégale el usuario y la contraseña en persona."}</span></div>
-    <div class="campo"><label class="etiqueta" for="ua_usuario">Usuario</label><input id="ua_usuario" required pattern="[a-zA-Z0-9._\\-]{3,30}" title="3 a 30 caracteres: letras, números, punto, guion" value="${escapar(usuario?.usuario||sugerirUsuario(a.nombre))}" autocomplete="off"></div>
-    <div class="campo"><label class="etiqueta" for="ua_clave">${usuario?"Nueva contraseña (opcional)":"Contraseña"}</label><input id="ua_clave" type="text" ${usuario?"":"required"} minlength="6" autocomplete="off" value="${usuario?"":claveSugerida()}"></div>
+    <div class="campo"><label class="etiqueta" for="ua_usuario">Usuario</label><input id="ua_usuario" ${usuario?"readonly":""} required autocapitalize="none" autocorrect="off" spellcheck="false" pattern="[a-zA-Z0-9._\\-]{3,30}" title="3 a 30 caracteres: letras, números, punto, guion" value="${escapar(usuario?.usuario||sugerirUsuario(a.nombre))}" autocomplete="off"></div>
+    <div class="campo"><label class="etiqueta" for="ua_clave">${usuario?"Nueva contraseña (opcional)":"Contraseña"}</label><input id="ua_clave" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" ${usuario?"":"required"} minlength="6" autocomplete="off" value="${usuario?"":claveSugerida()}"></div>
     <div class="campo ancho"><div class="error" id="errorUsuario"></div><div class="fila"><button class="boton principal" type="submit">${usuario?"Guardar cambios":"Crear usuario"}</button>${usuario?(usuario.activo===false?`<button type="button" class="boton" data-accion="activarUsuario">Reactivar acceso</button><span class="chip bad">Acceso suspendido</span>`:`<button type="button" class="boton peligro" data-accion="suspenderUsuario">Suspender acceso</button><span class="chip ok">Acceso activo</span>`):""}</div></div></form>`;
   if(ui.pestana==="evaluaciones"){const u=ultimaEvaluacion(a);
     cuerpo=`<form class="formulario tarjeta" id="formEvaluacion"><div class="campo ancho"><h3>Nueva evaluación</h3><span class="tenue">Composición corporal y 4 pruebas que definen el nivel y el grupo. Cortes referenciales para adultos; puedes fijar el nivel a mano en el perfil.</span></div>
@@ -659,7 +660,10 @@ function apartadoAlumno(a,seccion,previa){
 function pintar(){
   aplicarMarca();
   const raiz=$("#raiz");
-  if(!datos.usuarios.some(u=>u.rol==="admin")){raiz.innerHTML=pantallaConfiguracionInicial();return;}
+  if(!nubeConfigurada){raiz.innerHTML=`<main class="acceso"><div class="tarjeta pila"><h2>Falta conectar Supabase</h2><p class="tenue">Pega el Project URL y la clave pública en las constantes SUPABASE_URL y SUPABASE_KEY del archivo.</p></div></main>`;return;}
+  if(estadoNube.error){raiz.innerHTML=`<main class="acceso"><div class="tarjeta pila"><h2>No se pudo conectar</h2><p class="tenue">${escapar(estadoNube.error)}</p><button class="boton principal" onclick="location.reload()">Reintentar</button></div></main>`;return;}
+  if(!estadoNube.listo){raiz.innerHTML=`<main class="acceso"><p class="tenue">Cargando PonteFit…</p></main>`;return;}
+  if(!estadoNube.hayAdmin){raiz.innerHTML=pantallaConfiguracionInicial();return;}
   if(!usuarioActual){raiz.innerHTML=pantallaIngreso();return;}
   const c=config();
   const menu=esAdmin()?[["panel","Panel"],["alumnos","Alumnos"],["avance","Avance"],["asistencia","Asistencia"],["pagos","Pagos"],["ajustes","Ajustes"]]
@@ -683,8 +687,10 @@ function pintar(){
 /* =========================================================
    10. ACCIONES
    ========================================================= */
-function actualizarAlumno(id,cambio){const a=structuredClone(datos.alumnos[id]);cambio(a);a.actualizado=new Date().toISOString();datos.alumnos[id]=a;guardarDatos();pintar();}
+function actualizarAlumno(id,cambio){const a=structuredClone(datos.alumnos[id]);cambio(a);a.actualizado=new Date().toISOString();datos.alumnos[id]=a;pintar();if(esAdmin())guardarAlumnoNube(a);}
 function registrarAsistencia(id,clave){
+  if(!esAdmin()){const a=datos.alumnos[id];if((a.asistencias||[]).some(x=>x.fecha===hoy()&&x.sesion===clave))return;const r={id:nuevoId(),fecha:hoy(),sesion:clave};
+    a.asistencias=[...(a.asistencias||[]),r];pintar();llamar(nube.rpc("alumno_marcar_asistencia",{p_registro:r}));return;}
   actualizarAlumno(id,a=>{a.asistencias=a.asistencias||[];if(!a.asistencias.some(x=>x.fecha===hoy()&&x.sesion===clave))a.asistencias.push({id:nuevoId(),fecha:hoy(),sesion:clave});});
 }
 function leerRegistroProgreso(autor){
@@ -694,8 +700,7 @@ function leerRegistroProgreso(autor){
 }
 async function descargarCopia(){
   // La copia incluye las fotos de progreso para no perderlas
-  let fotos=[];try{fotos=await Promise.all((await todasLasFotos()).map(async({blob,...meta})=>({...meta,data:await blobADataUrl(blob)})));}catch(_){}
-  const nombre=`copia-gimnasio-${hoy()}.json`,texto=JSON.stringify({...datos,fotos});
+  const nombre=`copia-gimnasio-${hoy()}.json`,texto=JSON.stringify({config:datos.config,alumnos:datos.alumnos,usuarios:datos.usuarios.map(({usuario,rol,alumnoId,activo})=>({usuario,rol,alumnoId,activo}))},null,2);
   // Dentro de claude.ai la descarga pasa por el permiso del visor; en un archivo local se usa un enlace normal
   const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
   if(dl){try{await dl.save({filename:nombre,data:new Blob([texto],{type:"application/json"})});}catch(_){avisar("La descarga se canceló.");}return;}
@@ -707,31 +712,26 @@ async function descargarCopia(){
    12. FOTOS DE PROGRESO (IndexedDB: se guardan en este navegador)
    ========================================================= */
 const ANGULOS={frente:"Frente",perfil:"Perfil",espalda:"Espalda",libre:"Libre"};
-let promesaBdFotos=null;
-function abrirBdFotos(){
-  if(promesaBdFotos)return promesaBdFotos;
-  promesaBdFotos=new Promise((ok,mal)=>{
-    if(!window.indexedDB)return mal(new Error("Este navegador no guarda fotos"));
-    const r=indexedDB.open("pontefit-fotos",1);
-    r.onupgradeneeded=()=>{r.result.createObjectStore("fotos",{keyPath:"id"}).createIndex("alumnoId","alumnoId");};
-    r.onsuccess=()=>ok(r.result);r.onerror=()=>mal(r.error);
-  });
-  promesaBdFotos.catch(()=>{promesaBdFotos=null;});
-  return promesaBdFotos;
+// Cada foto: archivo privado en el bucket "fotos" (carpeta = id del alumno) + fila en la tabla "fotos"
+async function fotosDeAlumno(id){
+  const r=await nube.from("fotos").select("*").eq("alumno_id",id);if(r.error)throw r.error;
+  const filas=r.data||[];if(!filas.length)return[];
+  const firmadas=await nube.storage.from("fotos").createSignedUrls(filas.map(f=>f.ruta),3600);
+  const urls=Object.fromEntries((firmadas.data||[]).map(x=>[x.path,x.signedUrl]));
+  return filas.map(f=>({id:f.id,alumnoId:f.alumno_id,fecha:f.fecha,angulo:f.angulo,autor:f.autor,ruta:f.ruta,creado:new Date(f.creado).getTime(),url:urls[f.ruta]}));
 }
-async function operacionFotos(modo,fn){
-  const db=await abrirBdFotos();
-  return new Promise((ok,mal)=>{const tx=db.transaction("fotos",modo);let res;const req=fn(tx.objectStore("fotos"));if(req)req.onsuccess=()=>{res=req.result;};
-    tx.oncomplete=()=>ok(res);tx.onerror=()=>mal(tx.error);tx.onabort=()=>mal(tx.error);});
+async function guardarFoto(f){
+  const ruta=`${f.alumnoId}/${crypto.randomUUID()}.jpg`;
+  const up=await nube.storage.from("fotos").upload(ruta,f.blob,{contentType:"image/jpeg"});if(up.error)throw up.error;
+  const r=await nube.from("fotos").insert({alumno_id:f.alumnoId,fecha:f.fecha,angulo:f.angulo,autor:f.autor,ruta});
+  if(r.error){await nube.storage.from("fotos").remove([ruta]);throw r.error;}
 }
-const fotosDeAlumno=id=>operacionFotos("readonly",st=>st.index("alumnoId").getAll(id));
-const guardarFoto=f=>operacionFotos("readwrite",st=>st.put(f));
-const borrarFoto=id=>{const u=urlsFotos.get(id);if(u){URL.revokeObjectURL(u);urlsFotos.delete(id);}return operacionFotos("readwrite",st=>st.delete(id));};
-const todasLasFotos=()=>operacionFotos("readonly",st=>st.getAll());
-const vaciarFotos=()=>operacionFotos("readwrite",st=>st.clear()).catch(()=>{});
-async function borrarFotosDeAlumno(id){try{for(const f of await fotosDeAlumno(id))await borrarFoto(f.id);}catch(_){}}
-const urlsFotos=new Map();
-function urlFoto(f){if(!urlsFotos.has(f.id))urlsFotos.set(f.id,URL.createObjectURL(f.blob));return urlsFotos.get(f.id);}
+async function borrarFoto(id){
+  const r=await nube.from("fotos").select("ruta").eq("id",id).maybeSingle();if(r.error)throw r.error;if(!r.data)return;
+  await nube.storage.from("fotos").remove([r.data.ruta]);const d=await nube.from("fotos").delete().eq("id",id);if(d.error)throw d.error;
+}
+async function borrarFotosDeAlumno(id){try{const fs=await fotosDeAlumno(id);if(fs.length)await nube.storage.from("fotos").remove(fs.map(f=>f.ruta));}catch(_){}}
+const urlFoto=f=>f.url;
 // Reduce la foto a 1080 px de lado mayor en JPEG para que ocupe poco (~150 KB)
 async function comprimirImagen(archivo,lado=1080){
   const url=URL.createObjectURL(archivo);
@@ -747,7 +747,7 @@ const dataUrlABlob=async u=>(await fetch(u)).blob();
 
 function seccionFotos(alumnoId,esAlumno){
   return`<section class="tarjeta pila"><div><h3>${esAlumno?"Mis fotos de progreso":"Fotos de progreso"}</h3>
-  <span class="tenue">Para comparar bien: misma luz, misma ropa, misma distancia y cada 2 a 4 semanas. Solo las ven ${esAlumno?"tú y tu entrenador":"el alumno y tú"}.</span></div>
+  <span class="tenue">Para comparar bien: misma luz, misma ropa, misma distancia y cada 2 a 4 semanas. Se guardan en privado: solo las ven ${esAlumno?"tú y tu entrenador":"el alumno y tú"}, desde cualquier dispositivo.</span></div>
   <form class="formulario" id="formFoto" onsubmit="return false">
     <div class="campo"><label class="etiqueta" for="ft_angulo">Ángulo</label><select id="ft_angulo">${Object.entries(ANGULOS).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select></div>
     <div class="campo"><label class="etiqueta" for="ft_fecha">Fecha</label><input id="ft_fecha" type="date" value="${hoy()}" max="${hoy()}"></div>
@@ -762,7 +762,7 @@ async function pintarGaleria(){
   const cont=$("#galeriaFotos");if(!cont)return;
   let fotos;
   try{fotos=await fotosDeAlumno(cont.dataset.alumno);}
-  catch(_){cont.innerHTML=`<p class="tenue">Este navegador no permite guardar fotos (por ejemplo, en modo privado). Ábrelo en una ventana normal.</p>`;return;}
+  catch(_){cont.innerHTML=`<p class="tenue">No se pudieron cargar las fotos. Revisa tu conexión y vuelve a abrir esta pestaña.</p>`;return;}
   if(!cont.isConnected)return;
   if(!fotos.length){cont.innerHTML=`<div class="vacio">Aún no hay fotos. Pulsa <b>Tomar foto</b> para la primera.</div>`;return;}
   fotos.sort((a,b)=>a.fecha<b.fecha?1:a.fecha>b.fecha?-1:b.creado-a.creado);
@@ -792,7 +792,7 @@ async function subirFotos(alumnoId,archivos){
   for(const archivo of archivos){
     if(!archivo.type.startsWith("image/"))continue;
     try{const blob=await comprimirImagen(archivo);await guardarFoto({id:nuevoId(),alumnoId,fecha,angulo,blob,creado:Date.now(),autor:esAdmin()?"entrenador":"alumno"});n++;}
-    catch(e){avisar(e&&e.name==="QuotaExceededError"?"No hay espacio en el navegador para más fotos.":"No se pudo guardar una de las fotos. Prueba con otra imagen.");}
+    catch(e){console.error(e);avisar("No se pudo subir una de las fotos. Revisa tu conexión y vuelve a intentar.");}
   }
   if(n){Object.assign(ui,{compAngulo:angulo,compDespues:fecha});pintarGaleria();avisar(n>1?`${n} fotos guardadas`:"Foto guardada");}
 }
@@ -807,31 +807,44 @@ function abrirVisor(id){
 document.addEventListener("submit",async e=>{
   e.preventDefault();const f=e.target.id;
   if(f==="formInicial"){
-    const usuario=$("#ini_usuario").value.trim(),clave=$("#ini_clave").value;
-    if(clave!==$("#ini_clave2").value){$("#errorAcceso").textContent="Las contraseñas no coinciden.";return;}
-    const sal=nuevoId(),u={id:nuevoId(),usuario,sal,hash:await hashClave(clave,sal),rol:"admin",activo:true};
-    datos.usuarios.push(u);datos.config={...config(),nombre:$("#ini_gym").value.trim()||CONFIG_INICIAL.nombre};guardarDatos();
-    try{sessionStorage.setItem(CLAVE_SESION,u.id);}catch(_){}usuarioActual=u;ui.vista="panel";pintar();return;
+    const usuario=$("#ini_usuario").value.trim().toLowerCase(),clave=$("#ini_clave").value,err=$("#errorAcceso");
+    if(clave!==$("#ini_clave2").value){err.textContent="Las contraseñas no coinciden.";return;}
+    err.textContent="Creando cuenta…";
+    let r=await nube.auth.signUp({email:correoDe(usuario),password:clave});
+    if(r.error&&/registered|exists/i.test(r.error.message))r=await nube.auth.signInWithPassword({email:correoDe(usuario),password:clave});
+    if(r.error){err.textContent=traducirError(r.error);return;}
+    if(!r.data.session){err.textContent="Supabase pide confirmar el correo. Desactiva 'Confirm email' en Authentication > Sign In / Providers > Email y vuelve a intentar.";return;}
+    const rc=await nube.rpc("reclamar_admin",{p_usuario:usuario});
+    if(rc.error||!rc.data){err.textContent="Ya existe un entrenador registrado. Ingresa con su usuario.";await nube.auth.signOut();estadoNube.hayAdmin=true;setTimeout(pintar,1800);return;}
+    datos.config={...config(),nombre:$("#ini_gym").value.trim()||CONFIG_INICIAL.nombre};await llamar(nube.from("config").upsert({id:1,datos:datos.config}));
+    estadoNube.hayAdmin=true;await cargarSesion(r.data.user);ui.vista="panel";pintar();return;
   }
   if(f==="formIngreso"){
-    const nombre=$("#ing_usuario").value.trim().toLowerCase(),u=datos.usuarios.find(x=>x.usuario.toLowerCase()===nombre);
-    const ok=u&&(await hashClave($("#ing_clave").value,u.sal))===u.hash;
-    if(!ok){$("#errorAcceso").textContent="Usuario o contraseña incorrectos.";return;}
-    if(u.activo===false){$("#errorAcceso").textContent="Tu acceso está suspendido. Consulta con tu entrenador.";return;}
-    try{sessionStorage.setItem(CLAVE_SESION,u.id);}catch(_){}usuarioActual=u;Object.assign(ui,{vista:u.rol==="admin"?"panel":"plan",semana:null});pintar();return;
+    const usuario=$("#ing_usuario").value.trim().toLowerCase(),err=$("#errorAcceso");err.textContent="Entrando…";
+    const r=await nube.auth.signInWithPassword({email:correoDe(usuario),password:$("#ing_clave").value});
+    if(r.error){err.textContent=/invalid/i.test(r.error.message)?"Usuario o contraseña incorrectos. Revisa mayúsculas y minúsculas, o pide al entrenador una nueva contraseña.":traducirError(r.error);return;}
+    try{await cargarSesion(r.data.user);}catch(e){err.textContent=e.message;return;}
+    Object.assign(ui,{vista:esAdmin()?"panel":"plan",semana:null});pintar();return;
   }
   if(f==="formPerfil"){
-    if(ui.vista==="nuevo"){const id=nuevoId(),a=leerPerfil({id,evaluaciones:[],progreso:[],asistencias:[],pagos:[],plan:null,creado:hoy()});if(!a.nombre)return;
-      datos.alumnos[id]=a;guardarDatos();Object.assign(ui,{vista:"ficha",alumnoId:id,pestana:"acceso"});pintar();avisar("Alumno creado. Ahora crea su usuario.");}
-    else{const id=ui.alumnoId;const a=leerPerfil(datos.alumnos[id]);datos.alumnos[id]=a;guardarDatos();pintar();avisar("Perfil guardado");}
+    if(ui.vista==="nuevo"){const id=crypto.randomUUID(),a=leerPerfil({id,evaluaciones:[],progreso:[],asistencias:[],pagos:[],plan:null,creado:hoy()});if(!a.nombre)return;
+      datos.alumnos[id]=a;Object.assign(ui,{vista:"ficha",alumnoId:id,pestana:"acceso"});pintar();guardarAlumnoNube(a);avisar("Alumno creado. Ahora crea su usuario.");}
+    else{const id=ui.alumnoId;const a=leerPerfil(datos.alumnos[id]);datos.alumnos[id]=a;pintar();guardarAlumnoNube(a);avisar("Perfil guardado");}
     return;
   }
   if(f==="formUsuarioAlumno"){
-    const nombre=$("#ua_usuario").value.trim(),clave=$("#ua_clave").value,existente=datos.usuarios.find(u=>u.alumnoId===ui.alumnoId);
-    if(datos.usuarios.some(u=>u.usuario.toLowerCase()===nombre.toLowerCase()&&u!==existente)){$("#errorUsuario").textContent="Ese usuario ya existe. Elige otro.";return;}
-    if(existente){existente.usuario=nombre;if(clave){existente.sal=nuevoId();existente.hash=await hashClave(clave,existente.sal);}}
-    else{const sal=nuevoId();datos.usuarios.push({id:nuevoId(),usuario:nombre,sal,hash:await hashClave(clave,sal),rol:"alumno",alumnoId:ui.alumnoId,activo:true});}
-    ui.credenciales=clave?{usuario:nombre,clave}:null;guardarDatos();pintar();avisar(clave?"Usuario listo. Anota los datos de acceso.":"Usuario actualizado");return;
+    const nombre=$("#ua_usuario").value.trim().toLowerCase(),clave=$("#ua_clave").value,existente=datos.usuarios.find(u=>u.alumnoId===ui.alumnoId),err=$("#errorUsuario");
+    if(existente){
+      if(!clave){avisar("Escribe una contraseña nueva para cambiarla.");return;}
+      err.textContent="Guardando…";const r=await nube.rpc("admin_cambiar_clave",{p_usuario:existente.id,p_clave:clave});
+      if(r.error){err.textContent=traducirError(r.error);return;}
+    }else{
+      if(datos.usuarios.some(u=>u.usuario===nombre)){err.textContent="Ese usuario ya existe. Elige otro.";return;}
+      err.textContent="Creando usuario…";
+      const r=await crearUsuarioAlumno(nombre,clave,ui.alumnoId);
+      if(r.error){err.textContent=r.error;return;}
+    }
+    ui.credenciales={usuario:nombre,clave};pintar();avisar(existente?"Contraseña cambiada. Anota los datos de acceso.":"Usuario listo. Anota los datos de acceso.");return;
   }
   if(f==="formEvaluacion"){
     const ev={id:nuevoId(),fecha:$("#ev_fecha").value,nota:$("#ev_nota").value};
@@ -843,6 +856,7 @@ document.addEventListener("submit",async e=>{
   if(f==="formProgreso"){
     const id=esAdmin()?ui.alumnoId:usuarioActual.alumnoId,r=leerRegistroProgreso(esAdmin()?"entrenador":"alumno");
     if(["peso","cintura","sentadilla","pesoMuerto","press","remo"].every(k=>r[k]==null)){avisar("Anota al menos un dato.");return;}
+    if(!esAdmin()){const a=datos.alumnos[id];a.progreso=[...(a.progreso||[]),r];pintar();await llamar(nube.rpc("alumno_agregar_progreso",{p_registro:r}));avisar("Registro guardado");return;}
     actualizarAlumno(id,a=>{a.progreso=[...(a.progreso||[]),r];});avisar("Registro guardado");return;
   }
   if(f==="formPago"){
@@ -855,15 +869,18 @@ document.addEventListener("submit",async e=>{
   }
   if(f==="formAjustes"){
     const c=config();
-    datos.config={nombre:$("#aj_nombre").value.trim()||CONFIG_INICIAL.nombre,lema:$("#aj_lema").value.trim(),entrenador:$("#aj_entrenador").value.trim(),color:$("#aj_color").value,
+    datos.config={...datos.config,nombre:$("#aj_nombre").value.trim()||CONFIG_INICIAL.nombre,lema:$("#aj_lema").value.trim(),entrenador:$("#aj_entrenador").value.trim(),color:$("#aj_color").value,
       grupos:{1:$("#aj_g1").value.trim()||c.grupos[1],2:$("#aj_g2").value.trim()||c.grupos[2],3:$("#aj_g3").value.trim()||c.grupos[3]},
       planes:c.planes.map((p,i)=>({id:p.id,nombre:$("#aj_pn"+i).value.trim()||p.nombre,dias:Math.max(1,+$("#aj_pd"+i).value||p.dias),precio:Math.max(0,+$("#aj_pp"+i).value||0)}))};
-    guardarDatos();pintar();avisar("Ajustes guardados");return;
+    pintar();await llamar(nube.from("config").upsert({id:1,datos:datos.config}));avisar("Ajustes guardados");return;
   }
   if(f==="formClaveAdmin"||f==="formClaveAlumno"){
-    const pre=f==="formClaveAdmin"?"ca":"cl",u=usuarioActual;
-    if((await hashClave($(`#${pre}_actual`).value,u.sal))!==u.hash){avisar("La contraseña actual no es correcta.");return;}
-    u.sal=nuevoId();u.hash=await hashClave($(`#${pre}_nueva`).value,u.sal);guardarDatos();pintar();avisar("Contraseña cambiada");
+    const pre=f==="formClaveAdmin"?"ca":"cl";
+    const v=await nube.auth.signInWithPassword({email:correoDe(usuarioActual.usuario),password:$(`#${pre}_actual`).value});
+    if(v.error){avisar("La contraseña actual no es correcta.");return;}
+    const r=await nube.auth.updateUser({password:$(`#${pre}_nueva`).value});
+    if(r.error){avisar(traducirError(r.error));return;}
+    pintar();avisar("Contraseña cambiada");
   }
 });
 
@@ -877,25 +894,18 @@ document.addEventListener("change",e=>{
   if(ref){const[si,tipo,i]=ref.split(":");actualizarAlumno(ui.alumnoId,a=>{const s=a.plan.sesiones[+si];if(tipo==="f")s.fuerza[+i].ej=e.target.value;else if(tipo==="c")s.cardio[+i]=e.target.value;else s.core[+i]=e.target.value;});avisar("Ejercicio cambiado");}
   if(e.target.dataset.subirFoto&&e.target.files.length){subirFotos(e.target.dataset.subirFoto,[...e.target.files]);e.target.value="";return;}
   if(["comp_angulo","comp_antes","comp_despues"].includes(e.target.id)){const k={comp_angulo:"compAngulo",comp_antes:"compAntes",comp_despues:"compDespues"}[e.target.id];ui[k]=e.target.value;if(k==="compAngulo"){ui.compAntes=null;ui.compDespues=null;}pintarGaleria();return;}
-  if(e.target.id==="importarArchivo"&&e.target.files[0]){
-    const lector=new FileReader();
-    lector.onload=async()=>{try{const d=JSON.parse(lector.result);if(!d.usuarios||!d.alumnos)throw 0;
-      const fotos=d.fotos||[];delete d.fotos;datos=d;guardarDatos();
-      if(fotos.length){await vaciarFotos();for(const f of fotos){const{data,...meta}=f;await guardarFoto({...meta,blob:await dataUrlABlob(data)});}}
-      iniciarSesionGuardada();pintar();avisar("Copia restaurada");}catch(_){avisar("El archivo no es una copia válida de este sistema.");}};
-    lector.readAsText(e.target.files[0]);
-  }
+
 });
 
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("tr[data-abrir]"))e.target.click();});
 document.addEventListener("click",e=>{
   const el=e.target.closest("[data-ir],[data-abrir],[data-pestana],[data-semana],[data-accion],[data-asistencia],[data-ordenar],[data-marcar-hoy],[data-quitar-asistencia-hoy],[data-quitar-asistencia],[data-borrar-eval],[data-borrar-progreso],[data-borrar-pago],[data-abrir-pago],[data-entrar-demo],[data-ver-foto],[data-borrar-foto],[data-borrar-foto-ok],[data-cancelar-foto]");
   if(!el)return;const d=el.dataset;
-  if(d.entrarDemo){const u=datos.usuarios.find(x=>x.usuario===d.entrarDemo);if(u){try{sessionStorage.setItem(CLAVE_SESION,u.id);}catch(_){}usuarioActual=u;Object.assign(ui,{vista:u.rol==="admin"?"panel":"plan",semana:null});pintar();}return;}
+  if(d.entrarDemo){$("#ing_usuario").value=d.entrarDemo;$("#ing_clave").value="demo123";$("#formIngreso").requestSubmit();return;}
   if(d.verFoto){abrirVisor(d.verFoto);return;}
   if(d.borrarFoto){ui.confirmarFoto=d.borrarFoto;pintarGaleria();return;}
   if(d.cancelarFoto!==undefined){ui.confirmarFoto=null;pintarGaleria();return;}
-  if(d.borrarFotoOk){borrarFoto(d.borrarFotoOk).then(()=>{ui.confirmarFoto=null;pintarGaleria();avisar("Foto borrada");});return;}
+  if(d.borrarFotoOk){borrarFoto(d.borrarFotoOk).then(()=>{ui.confirmarFoto=null;pintarGaleria();avisar("Foto borrada");}).catch(()=>avisar("No se pudo borrar la foto."));return;}
   if(d.ir){Object.assign(ui,{vista:d.ir,semana:null,confirmar:null,credenciales:null});pintar();window.scrollTo(0,0);return;}
   if(d.abrir){Object.assign(ui,{vista:"ficha",alumnoId:d.abrir,pestana:"perfil",semana:null,confirmar:null,credenciales:null});pintar();window.scrollTo(0,0);return;}
   if(d.abrirPago){Object.assign(ui,{vista:"ficha",alumnoId:d.abrirPago,pestana:"membresia",confirmar:null});pintar();return;}
@@ -911,15 +921,15 @@ document.addEventListener("click",e=>{
   if(d.borrarPago){actualizarAlumno(ui.alumnoId,a=>{a.pagos=a.pagos.filter(x=>x.id!==d.borrarPago);});return;}
   const accion=d.accion;
   if(accion==="salir")cerrarSesion();
-  if(accion==="cargarDemo"||accion==="reiniciarDemo"){vaciarFotos().then(crearDemo).then(d=>{datos=d;guardarDatos();usuarioActual=null;try{sessionStorage.removeItem(CLAVE_SESION);}catch(_){}pintar();avisar("Demo lista. Entra con uno de los accesos de prueba.");});return;}
+  if(accion==="cargarEjemplos"){cargarEjemplosNube();return;}
   if(accion==="nuevoAlumno"){ui.vista="nuevo";pintar();}
   if(accion==="eliminar"){ui.confirmar="eliminar";pintar();}
   if(accion==="regenerar"){ui.confirmar="regenerar";pintar();}
   if(accion==="cancelar"){ui.confirmar=null;pintar();}
-  if(accion==="eliminarConfirmado"){const id=ui.alumnoId;borrarFotosDeAlumno(id);delete datos.alumnos[id];datos.usuarios=datos.usuarios.filter(u=>u.alumnoId!==id);guardarDatos();Object.assign(ui,{vista:"alumnos",alumnoId:null,confirmar:null});pintar();avisar("Alumno eliminado");}
+  if(accion==="eliminarConfirmado"){const id=ui.alumnoId;borrarFotosDeAlumno(id).then(()=>llamar(nube.from("alumnos").delete().eq("id",id)));delete datos.alumnos[id];datos.usuarios=datos.usuarios.filter(u=>u.alumnoId!==id);Object.assign(ui,{vista:"alumnos",alumnoId:null,confirmar:null});pintar();avisar("Alumno eliminado");}
   if(accion==="generarPlan"){const inicio=$("#pl_inicio").value||hoy();actualizarAlumno(ui.alumnoId,a=>{const nota=a.plan?.nota||"";a.plan=generarPlan({objetivo:a.objetivo,nivel:nivelAlumno(a),dias:+a.dias||3,limitaciones:a.limitaciones||[],inicio,semilla:a.id+Date.now()});a.plan.nota=nota;});ui.confirmar=null;ui.semana=null;pintar();avisar("Plan de 8 semanas generado");}
   if(accion==="guardarNota"){const nota=$("#pl_nota").value;actualizarAlumno(ui.alumnoId,a=>{a.plan.nota=nota;});avisar("Nota guardada");}
-  if(accion==="suspenderUsuario"||accion==="activarUsuario"){const u=datos.usuarios.find(x=>x.alumnoId===ui.alumnoId);u.activo=accion==="activarUsuario";guardarDatos();pintar();avisar(u.activo?"Acceso reactivado":"Acceso suspendido");}
+  if(accion==="suspenderUsuario"||accion==="activarUsuario"){const u=datos.usuarios.find(x=>x.alumnoId===ui.alumnoId);u.activo=accion==="activarUsuario";pintar();llamar(nube.from("perfiles").update({activo:u.activo}).eq("id",u.id)).then(()=>avisar(u.activo?"Acceso reactivado":"Acceso suspendido"));}
   if(accion==="exportar")descargarCopia();
 });
 
@@ -966,9 +976,100 @@ async function crearDemo(){
   return d;
 }
 
+/* =========================================================
+   13. CONEXIÓN CON SUPABASE
+   ========================================================= */
+function traducirError(e){
+  const m=(e&&e.message)||String(e);
+  if(/rate limit|too many/i.test(m))return"Demasiados intentos seguidos. Espera un minuto y vuelve a intentar.";
+  if(/password.*(6|short|least)/i.test(m))return"La contraseña debe tener al menos 6 caracteres.";
+  if(/fetch|network/i.test(m))return"Sin conexión con el servidor. Revisa tu internet.";
+  return m;
+}
+async function llamar(promesa){const r=await promesa;if(r&&r.error){console.error(r.error);avisar("No se pudo guardar en la nube: "+traducirError(r.error));}return r;}
+const mapaPerfil=p=>({id:p.id,usuario:p.usuario,rol:p.rol,alumnoId:p.alumno_id,activo:p.activo});
+// Guarda una ficha: la parte que ve el alumno en "alumnos" y la ficha de salud y notas en "alumnos_privado"
+const colasAlumno={};
+function guardarAlumnoNube(a){
+  const{salud,notasPrivadas,...visible}=a;
+  colasAlumno[a.id]=(colasAlumno[a.id]||Promise.resolve()).then(async()=>{
+    const r1=await nube.from("alumnos").upsert({id:a.id,datos:visible,actualizado:new Date().toISOString()});
+    if(r1.error)throw r1.error;
+    const r2=await nube.from("alumnos_privado").upsert({alumno_id:a.id,salud:salud||"",notas:notasPrivadas||""});
+    if(r2.error)throw r2.error;
+  }).catch(e=>{console.error(e);avisar("No se pudo guardar en la nube: "+traducirError(e));});
+  return colasAlumno[a.id];
+}
+async function cargarSesion(user){
+  const p=await nube.from("perfiles").select("*").eq("id",user.id).maybeSingle();
+  if(p.error)throw new Error(traducirError(p.error));
+  if(!p.data){await nube.auth.signOut();throw new Error("Este usuario no tiene acceso al sistema. Consulta con tu entrenador.");}
+  if(!p.data.activo){await nube.auth.signOut();throw new Error("Tu acceso está suspendido. Consulta con tu entrenador.");}
+  usuarioActual=mapaPerfil(p.data);
+  await cargarDatosNube();
+}
+async function cargarDatosNube(){
+  const admin=esAdmin();
+  const[al,pf,pv,cf]=await Promise.all([
+    nube.from("alumnos").select("id,datos"),
+    admin?nube.from("perfiles").select("*"):Promise.resolve({data:[]}),
+    admin?nube.from("alumnos_privado").select("*"):Promise.resolve({data:[]}),
+    nube.from("config").select("datos").maybeSingle()]);
+  for(const r of[al,pf,pv,cf])if(r.error)throw new Error(traducirError(r.error));
+  datos.config=cf.data?.datos||datos.config;datos.demo=!!datos.config.demo;
+  datos.alumnos={};(al.data||[]).forEach(r=>{datos.alumnos[r.id]={...r.datos,id:r.id};});
+  (pv.data||[]).forEach(p=>{const a=datos.alumnos[p.alumno_id];if(a){a.salud=p.salud;a.notasPrivadas=p.notas;}});
+  datos.usuarios=admin?(pf.data||[]).map(mapaPerfil):[usuarioActual];
+}
+// Vuelve a leer los datos (para ver cambios hechos desde otro dispositivo)
+let recargando=false;
+async function refrescar(){
+  if(!usuarioActual||recargando)return;recargando=true;
+  try{await Promise.all(Object.values(colasAlumno));await cargarDatosNube();
+    const fe=document.activeElement;if(!(fe&&fe.closest&&fe.closest("form")&&/INPUT|TEXTAREA|SELECT/.test(fe.tagName)))pintar();}
+  catch(e){console.error(e);}finally{recargando=false;}
+}
+document.addEventListener("click",e=>{if(e.target.closest("[data-ir],[data-pestana]"))setTimeout(refrescar,50);});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refrescar();});
+async function crearUsuarioAlumno(usuario,clave,alumnoId){
+  const r=await creadorUsuarios.auth.signUp({email:correoDe(usuario),password:clave});
+  if(r.error)return{error:/registered|exists/i.test(r.error.message)?"Ese usuario ya existe. Elige otro.":traducirError(r.error)};
+  if(!r.data.user||(r.data.user.identities&&r.data.user.identities.length===0))return{error:"Ese usuario ya existe. Elige otro."};
+  if(!r.data.session)return{error:"Supabase pide confirmar el correo. Desactiva 'Confirm email' en Authentication > Sign In / Providers > Email."};
+  await creadorUsuarios.auth.signOut();
+  const perfil={id:r.data.user.id,usuario,rol:"alumno",alumno_id:alumnoId,activo:true};
+  const ins=await nube.from("perfiles").insert(perfil);
+  if(ins.error)return{error:traducirError(ins.error)};
+  datos.usuarios.push(mapaPerfil(perfil));return{};
+}
+// Carga 6 alumnos ficticios con sus usuarios (contraseña demo123) para presentar la demo
+async function cargarEjemplosNube(){
+  ui.cargandoEjemplos=true;pintar();
+  try{
+    const demo=await crearDemo(),mapa={};
+    for(const[viejo,a]of Object.entries(demo.alumnos)){const id=crypto.randomUUID();mapa[viejo]=id;a.id=id;datos.alumnos[id]=a;await guardarAlumnoNube(a);}
+    for(const u of demo.usuarios.filter(x=>x.rol==="alumno")){const r=await crearUsuarioAlumno(u.usuario,"demo123",mapa[u.alumnoId]);if(r.error&&!/existe/.test(r.error))avisar(`No se pudo crear el usuario ${u.usuario}: ${r.error}`);}
+    datos.config={...datos.config,demo:true,entrenador:datos.config.entrenador||"Coach Demo"};datos.demo=true;
+    await llamar(nube.from("config").upsert({id:1,datos:datos.config}));
+    await cargarDatosNube();avisar("Alumnos de ejemplo cargados. Todos usan la contraseña demo123.");
+  }catch(e){console.error(e);avisar("No se pudieron cargar los ejemplos: "+traducirError(e));}
+  ui.cargandoEjemplos=false;pintar();
+}
+
 /* ===== Arranque ===== */
-iniciarSesionGuardada();
-pintar();
+(async()=>{
+  pintar();
+  if(!nubeConfigurada)return;
+  try{
+    const[cf,ha]=await Promise.all([nube.from("config").select("datos").maybeSingle(),nube.rpc("hay_admin")]);
+    if(cf.error||ha.error)throw(cf.error||ha.error);
+    datos.config=cf.data?.datos||{};datos.demo=!!datos.config.demo;estadoNube.hayAdmin=!!ha.data;
+    const{data:{session}}=await nube.auth.getSession();
+    if(session){try{await cargarSesion(session.user);Object.assign(ui,{vista:esAdmin()?"panel":"plan"});}catch(_){usuarioActual=null;}}
+    estadoNube.listo=true;
+  }catch(e){console.error(e);estadoNube.error=/relation|function|does not exist|schema cache/i.test(e.message||"")?"Falta crear las tablas: ejecuta el archivo pontefit-supabase.sql en el SQL Editor de Supabase.":traducirError(e);}
+  pintar();
+})();
 </script>
 </body>
 </html>
